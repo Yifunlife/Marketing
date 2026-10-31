@@ -1,0 +1,41 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "yifun-marketing",
+  "account_id": "5a472d15dc37681abce4ab6e4eb152c3",
+  "main": "dist/worker.mjs",
+  "compatibility_date": "2026-10-31",
+  "workers_dev": true,
+  "assets": {
+    "directory": "dist/public",
+    "binding": "ASSETS",
+    "run_worker_first": true
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "yifun-marketing-db",
+      "database_id": "fc3abb92-2f2a-47f3-8ec9-ca0487f7e355",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "BUCKET",
+      "bucket_name": "yifun-marketing-files"
+    }
+  ],
+  "observability": {
+    "enabled": true,
+    "logs": {
+      "enabled": true,
+      "invocation_logs": false
+    }
+  },
+  "triggers": {
+    "crons": [
+      "0 0 * * *",
+      "30 2 * * *"
+    ]
+  },
+  "preview_urls": false
+}

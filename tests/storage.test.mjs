@@ -1,0 +1,8 @@
+import assert from 'node:assert/strict';import fs from 'node:fs';import vm from 'node:vm';import test from 'node:test';
+const c={Request,Response,URL,crypto,Number,Set,JSON,json:(data,status=200)=>new Response(JSON.stringify(data),{status})};vm.createContext(c);vm.runInContext(fs.readFileSync('worker/files.mjs','utf8'),c);
+const user={id:'u1',role:'operator',permissions:[3]};
+test('reject uploads from read-only users',async()=>{const r=await c.fileApi(new Request('https://site/api/files',{method:'POST'}),{BUCKET:{}},{...user,role:'viewer'});assert.equal(r.status,403);});
+test('reject executable file types before touching R2',async()=>{const r=await c.fileApi(new Request('https://site/api/files',{method:'POST',headers:{'Content-Type':'text/html','Content-Length':'10'},body:'executable'}),{BUCKET:{}},user);assert.equal(r.status,415);});
+test('reject oversized files without reading the body',async()=>{const r=await c.fileApi(new Request('https://site/api/files',{method:'POST',headers:{'Content-Type':'image/png','Content-Length':String(101*1024*1024)},body:'x'}),{BUCKET:{}},user);assert.equal(r.status,413);});
+test('prevent another operator reading a private file',async()=>{const DB={prepare:()=>({bind:()=>({first:async()=>({owner_id:'another-user',object_key:'private'})})})};const r=await c.fileApi(new Request('https://site/api/files/private'),{BUCKET:{},DB},user);assert.equal(r.status,403);});
+test('compiled worker reports its configured storage bindings',async()=>{const {default:worker}=await import('../dist/worker.mjs');const health=await worker.fetch(new Request('https://site/health'),{DB:{},BUCKET:{}});assert.equal(health.status,200);const body=await health.json();assert.equal(body.database,true);assert.equal(body.files,true);});
