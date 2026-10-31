@@ -9,3 +9,6 @@ backups/
 *.sqlite*
 .DS_Store
 .openai/
+
+__pycache__/
+*.pyc

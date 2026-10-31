@@ -36,3 +36,7 @@ npx wrangler deploy
 https://yifun-marketing.yifunlife.workers.dev
 
 数据库：`yifun-marketing-db`；文件桶：`yifun-marketing-files`。原人员密码保持不变，新域名需重新登录。历史登录会话、登录失败计数和一次性授权请求不迁移。
+
+### 乐园号创作后台采集
+
+每日08:00由本机Codex定时任务读取Safari已登录的乐园号，导出四类逐日报表，经校验后将指标写入D1、原始xlsx写入私有R2。这与10:30聚光云端同步独立。必须保持电脑在线、应用运行和创作后台登录；非Cloudflare独立采集，尚无官方创作数据API接入。运行说明见 docs/creator-collection.md。首次采集已手动跑通，后续定时执行需持续观察。
