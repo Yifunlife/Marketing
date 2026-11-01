@@ -12,6 +12,7 @@ if(path==='/api/login'&&req.method==='POST'){const body=await req.json();const l
 if(!user)return json({error:'请先登录'},401);
 if(path.startsWith('/api/files'))return await fileApi(req,env,user);
 if(path==='/api/storage/status')return json({database:'D1',files:'R2',ready:!!env.BUCKET});
+if(path.startsWith('/api/creator-cloud/'))return await creatorCloudApi(req,env,user);
 if(path.startsWith('/api/xhs/'))return await xhsApi(req,env,user);
 if(path==='/api/me')return json({user:clean(Object.fromEntries(fields.split(',').map(k=>[k,user[k]])))});
 if(path==='/api/logout'){if(token)await db.prepare('DELETE FROM sessions WHERE token_hash=?').bind(await digest(token)).run();return json({ok:true},200,{'Set-Cookie':'ops_session=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0'});}
