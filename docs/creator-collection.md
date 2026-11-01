@@ -4,7 +4,7 @@
 
 ## 云端主流程（2026-11-01）
 
-Cloudflare Browser Run 已实测恢复乐园号登录并通过页面导出四份报表，写入D1、原件存R2。它不是小红书官方创作数据API。首次成功读取后，管理接口保存 `creator_cloud_schedule.enabled`，由 Worker 的 `0 0 * * *`（上海08:00）触发 `scheduledCreatorSync`。Mac锁屏、关机不影响云端任务。
+Cloudflare Browser Run 已实测恢复乐园号登录并通过页面导出四份报表，写入D1、原件存R2。它不是小红书官方创作数据API。首次成功读取后，管理接口保存 `creator_cloud_schedule.enabled`，由 Worker 的 `0 23 * * *`（上海07:00）触发 `scheduledCreatorSync`。Mac锁屏、关机不影响云端任务。
 
 登录状态由用户在云端窗口扫码确认后加密保存，不能从本机提取Cookie或密码。每次先核实账号49314445652与公司名，只采集账号汇总经营数据。登录失效、验证码、账号不符、导出格式变化、报表缺昨日或四表校验不通过，均保留旧D1数据；失败写入 `sync_runs` 和加密状态 `creator_cloud_failure`，在主管理员的云端采集页显示。下次正常日程重试，不绕过验证。
 
