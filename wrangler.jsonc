@@ -16,6 +16,11 @@
       "database_name": "yifun-marketing-db",
       "database_id": "fc3abb92-2f2a-47f3-8ec9-ca0487f7e355",
       "migrations_dir": "migrations"
+    },
+    {
+      "binding": "CRM_DB",
+      "database_name": "yifun-crm-db",
+      "database_id": "59e890b8-985a-4027-a205-50d8920509cb"
     }
   ],
   "r2_buckets": [
