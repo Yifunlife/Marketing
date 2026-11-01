@@ -1,5 +1,6 @@
 (()=>{
-const s={data:null,error:'',notice:'',loading:false,month:new Date(Date.now()+8*3600000).toISOString().slice(0,7),scope:'all',maturity:30,performance:40};
+const previous=new Date(Date.now()+8*3600000);previous.setUTCDate(1);previous.setUTCMonth(previous.getUTCMonth()-1);
+const s={data:null,error:'',notice:'',loading:false,month:previous.toISOString().slice(0,7),scope:'all',maturity:30,performance:40};
 const e=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const names={all:'全部业务', 'douyin-local':'抖音内贸','meta-product':'Meta 产品','meta-full':'Meta 整场','google':'Google','whatsapp':'WhatsApp','alibaba':'阿里巴巴'};
 const time=v=>v?new Date(v).toLocaleString('zh-CN',{timeZone:'Asia/Shanghai',hour12:false}):'—';
