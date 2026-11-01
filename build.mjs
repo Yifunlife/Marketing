@@ -2,10 +2,10 @@ import fs from 'node:fs';
 fs.rmSync('dist',{recursive:true,force:true});fs.mkdirSync('dist/public',{recursive:true});
 for(const name of ['editing.js','accounts.js','brand-ui.js','brand.css','files.html'])fs.copyFileSync('src/'+name,'dist/public/'+name);
 const html=fs.readFileSync('src/index.html','utf8').replace('<script src="app.js"></script>','<script src="/editing.js"></script><script src="/accounts.js"></script><script src="/brand-ui.js"></script>');fs.writeFileSync('dist/public/index.html',html);
-const source=['worker/auth.mjs','worker/xhs-callback.mjs','worker/files.mjs','worker/scheduled.mjs','worker/creator.mjs','worker/creator-cloud.mjs'].map(p=>fs.readFileSync(p,'utf8').replaceAll('export async function ','async function ').replaceAll('export function ','function ')).join('\n');
+const source=['worker/auth.mjs','worker/xhs-callback.mjs','worker/files.mjs','worker/scheduled.mjs','worker/creator.mjs','worker/creator-cloud.mjs','worker/creator-collect.mjs'].map(p=>fs.readFileSync(p,'utf8').replaceAll('export async function ','async function ').replaceAll('export function ','function ')).join('\n');
 const app=fs.readFileSync('src/app.js','utf8');
 const entry=`
-export default {async scheduled(event,env,ctx){ctx.waitUntil(scheduledSync(env));},async fetch(req,env){try{const url=new URL(req.url),p=url.pathname;
+export default {async scheduled(event,env,ctx){ctx.waitUntil(scheduledSync(env));if(event.cron==='0 0 * * *')ctx.waitUntil(scheduledCreatorSync(env));},async fetch(req,env){try{const url=new URL(req.url),p=url.pathname;
 if(p==='/health')return json({ok:true,service:'yifun-marketing',database:!!env.DB,files:!!env.BUCKET});
 if(p==='/integrations/xiaohongshu/callback')return await xhsCallback(req,env);
 if(p==='/integrations/xiaohongshu/creator-cloud')return creatorCloudSetup();
