@@ -1,4 +1,4 @@
-const creatorTargets={garden:{key:'garden',label:'乐园号',name:'上海亦玩游乐设备集团',accountId:'49314445652'},factory:{key:'factory',label:'工厂号',name:'亦玩游乐设备工厂',accountId:'27247845471'},toy:{key:'toy',label:'玩具号',name:'亦玩游乐玩具工厂',accountId:null}};
+const creatorTargets={supertada:{key:'supertada',label:'SUPER TADA',name:'SUPER TADA',accountId:null},garden:{key:'garden',label:'乐园号',name:'上海亦玩游乐设备集团',accountId:'49314445652'},factory:{key:'factory',label:'工厂号',name:'亦玩游乐设备工厂',accountId:'27247845471'},toy:{key:'toy',label:'玩具号',name:'亦玩游乐玩具工厂',accountId:null}};
 function creatorTarget(key='garden'){const target=Object.prototype.hasOwnProperty.call(creatorTargets,key)?creatorTargets[key]:null;if(!target)throw Error('invalid_creator_account');return target;}
 function creatorSetting(target,name){return 'creator_cloud_'+name+(target.key==='garden'?'':':'+target.key);}
 function creatorPreview(target){return 'private/creator-cloud/'+target.key+'/login-preview.png';}
