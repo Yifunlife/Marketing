@@ -12,7 +12,7 @@ async function opsSyncApi(req,env,user){
  if(!id&&req.method==='GET'){
  const cards=[];for(const [key,t] of Object.entries(opsSyncTargets)){
   if(t.xhs){const target=creatorTarget(t.xhs),state=await xget(creatorSetting(target,'state'),env),last=await xget(creatorSetting(target,'collection'),env),failure=await xget(creatorSetting(target,'failure'),env),schedule=await xget(creatorSetting(target,'schedule'),env);cards.push({id:key,platform:t.platform,label:t.label,automatic:!!state&&schedule?.enabled===true,login:state?'已保存登录状态，采集时会校验':'需要扫码',last_at:last?.at||null,data_end:last?.as_of?new Date(Date.parse(last.as_of)-86400000).toISOString().slice(0,10):null,collection:last?'已采集':'尚未采集',failure:failure?.at>(last?.at||0)?'上次读取未完成，旧数据保留':null,can_collect:true});}
-  else {const login=await xget(opsScanKey(key,'login'),env),profile=await xget(opsScanKey(key,'profile'),env),last=await xget(opsScanKey(key,'collection'),env),failure=await xget(opsScanKey(key,'failure'),env);cards.push({id:key,platform:t.platform,label:t.label,login:profile?'账号身份已核实':login?.expires>Date.now()?'扫码窗口已准备':'需要扫码',last_at:last?.at||null,data_end:last?.data_end||null,collection:last?.status==='partial'?'已读取部分数据，报表待验证':'运营报表待验证',failure:failure?.message||null,can_collect:key==='douyin-garden'});}
+  else {const login=await xget(opsScanKey(key,'login'),env),profile=await xget(opsScanKey(key,'profile'),env),last=await xget(opsScanKey(key,'collection'),env),failure=await xget(opsScanKey(key,'failure'),env);cards.push({id:key,platform:t.platform,label:t.label,scan_expires:login?.expires>Date.now()&&(!last?.at||login.created_at>last.at)?login.expires:null,login:profile?'账号身份已核实':login?.expires>Date.now()?'扫码窗口已准备':'需要扫码',last_at:last?.at||null,data_end:last?.data_end||null,collection:last?.status==='partial'?'已读取部分数据，报表待验证':'运营报表待验证',failure:failure?.message||null,can_collect:key==='douyin-garden'});}
  }
  return xjson({cards,can_operate:opsSyncAllowed(user,true),ad_automatic:(await xget('oe:schedule',env))?.enabled===true});
  }
@@ -43,6 +43,7 @@ async function opsSyncApi(req,env,user){
  const text=await page.evaluate(()=>document.body.innerText);
  if(id==='wechat-video'){const message=/扫码|扫描二维码|微信登录/.test(text)?'请先扫码并在微信确认。':'已打开视频号后台；账号身份和报表读取尚待核实，暂未标为采集成功。';await xput(key('failure'),{at:Date.now(),message},env);return xjson({ok:false,message,collection_ready:false});}
  if(!text.includes('上海亦玩游乐设备集团')||!new RegExp('抖音号[：:]?\\s*'+target.identity+'(?:\\s|$)').test(text)){
+  if(!text.includes('85639035334'))return xjson({ok:false,pending:true,message:'等待扫码、手机确认或验证码；完成后会自动采集。'},202);
   const message=text.includes('85639035334')?'当前登录的是玩具号，请切换乐园号；没有覆盖数据。':'尚未核实乐园号，请在登录窗口完成手机确认或验证码。';await xput(key('failure'),{at:Date.now(),message},env);return xjson({ok:false,message,collection_ready:false},409);
  }
  await xput(key('profile'),{account_id:target.identity,name:'上海亦玩游乐设备集团',verified_at:Date.now()},env);
