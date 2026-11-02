@@ -5,7 +5,7 @@ const html=fs.readFileSync('src/index.html','utf8').replace('<script src="app.js
 const source=['worker/auth.mjs','worker/xhs-callback.mjs','worker/xhs-bindings.mjs','worker/files.mjs','worker/crm.mjs','worker/acquisition.mjs','worker/allocation.mjs','worker/scheduled.mjs','worker/creator-config.mjs','worker/creator.mjs','worker/creator-cloud.mjs','worker/creator-collect.mjs'].map(p=>fs.readFileSync(p,'utf8').replaceAll('export async function ','async function ').replaceAll('export function ','function ')).join('\n');
 const app=fs.readFileSync('src/app.js','utf8');
 const entry=`
-export default {async scheduled(event,env,ctx){if(event.cron==='0 23 * * *')ctx.waitUntil(scheduledCreatorsSync(env));else ctx.waitUntil(scheduledSync(env));},async fetch(req,env){try{const url=new URL(req.url),p=url.pathname;
+export default {async scheduled(event,env,ctx){if(['0 23 * * *','30 3 * * *','30 6 * * *'].includes(event.cron))ctx.waitUntil(scheduledCreatorsSync(env));else ctx.waitUntil(scheduledSync(env));},async fetch(req,env){try{const url=new URL(req.url),p=url.pathname;
 if(p==='/health')return json({ok:true,service:'yifun-marketing',database:!!env.DB,files:!!env.BUCKET});
 if(p==='/integrations/xiaohongshu/callback')return await xhsCallback(req,env);
 if(p==='/integrations/xiaohongshu/creator-cloud')return creatorCloudSetup(url.searchParams.get('account')||'garden');
