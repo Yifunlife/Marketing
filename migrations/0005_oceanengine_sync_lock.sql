@@ -1,0 +1,1 @@
+CREATE TABLE IF NOT EXISTS oceanengine_sync_lock(id TEXT PRIMARY KEY,lease TEXT NOT NULL,expires INTEGER NOT NULL);
