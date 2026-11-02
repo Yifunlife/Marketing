@@ -8,7 +8,8 @@ const opsSyncHtml=fs.readFileSync('src/ops-sync.html','utf8');
 const entry=`
 const OPS_SYNC_HTML=${JSON.stringify(opsSyncHtml)};
 export default {async scheduled(event,env,ctx){if(['0 23 * * *','30 3 * * *','30 6 * * *'].includes(event.cron))ctx.waitUntil(scheduledCreatorsSync(env));else {ctx.waitUntil(scheduledSync(env));ctx.waitUntil(oeScheduledSync(env));}},async fetch(req,env){try{const url=new URL(req.url),p=url.pathname;
-if(p==='/ops-sync')return new Response(OPS_SYNC_HTML,{headers:{...xhsHeaders,'Content-Type':'text/html; charset=utf-8','Content-Security-Policy':\"default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'\"}});
+if(p==='/ops-sync'&&url.searchParams.get('embedded')!=='1')return new Response(null,{status:302,headers:{Location:'/#ops-sync'}});
+if(p==='/ops-sync')return new Response(OPS_SYNC_HTML,{headers:{...xhsHeaders,'Content-Type':'text/html; charset=utf-8','Content-Security-Policy':\"default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self'; connect-src 'self'; base-uri 'none'; frame-ancestors 'self'; form-action 'self'\"}});
 if(p==='/integrations/oceanengine/callback')return await oeCallback(req,env);
 if(p==='/integrations/oceanengine')return oeSetup();
 if(p==='/integrations/douyin/callback')return await dyCallback(req,env);
