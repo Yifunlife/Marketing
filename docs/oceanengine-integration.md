@@ -14,3 +14,7 @@
 官方 SDK： https://github.com/oceanengine/ad_open_sdk_java （2026-10-29版本验证授权请求字段app_id/secret/auth_code，已授权账户ID优先使用account_string_id避免精度丢失）。
 
 58项测试通过，部署版本 e7764953-523f-4426-81bc-f9fbb1de530b。
+
+## 后续实测
+回调地址已由用户确认修改并在官方后台看到生效。官方授权两次回调均进入 token_exchange 阶段但未取得凭证。已补上不含凭证的诊断与隔离的无效参数连通性检查。
+2026-11-02 云端连通性测试明确返回 TypeError：Invalid redirect value，仅支持follow/manual，不支持error。已将请求改为manual（不跟随重定向，避免凭证随重定向泄漏），并增加回归检查。有效期字符串兼容也已修正，但它不是已证实的原始失败原因。
