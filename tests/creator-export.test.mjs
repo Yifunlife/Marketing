@@ -7,3 +7,5 @@ test('require reports through yesterday, never substitute stale days',()=>{const
 test('reject inconsistent follower totals before writing data',()=>{const days=completeDays();days['2026-10-31'].net_followers=1;assert.throws(()=>creatorValidateDays(days,Date.UTC(2026,10,1,0)),/report_totals_mismatch/);});
 
 test('derive the agreed net metric while preserving the platform reported value',()=>{const days=completeDays();days['2026-10-31']={...days['2026-10-31'],net_followers:8,new_followers:8,lost_followers:1};const normalized=creatorNormalizeDays(days);assert.equal(normalized['2026-10-31'].net_followers,7);assert.equal(normalized['2026-10-31'].reported_net_followers,8);assert.equal(days['2026-10-31'].net_followers,8);assert.equal(creatorValidateDays(normalized,Date.UTC(2026,10,1,0)),'2026-11-01');});
+
+test('stale platform export identifies expected and observed cutoff',()=>{assert.throws(()=>creatorValidateDays({'2026-10-31':{}},Date.parse('2026-11-02T04:00:00Z')),/reports_not_ready:expected=2026-11-01:latest=2026-10-31/);});
