@@ -1,8 +1,9 @@
+function creatorCloudAllowed(user){if(!user||user.must_change)return false;if(user.role==='owner')return true;let p;try{p=Array.isArray(user.permissions)?user.permissions:JSON.parse(user.permissions||'[]');}catch{return false;}return ['operator','manager'].includes(user.role)&&Array.isArray(p)&&p.includes(2);}
 // Cloud login feasibility check. No local browser state is copied or exported.
 async function cloudPuppeteer(){return (await import('@cloudflare/puppeteer')).default;}
 function cloudSafeError(e){return String(e?.message||'cloud_browser_failed').replace(/https?:[^\s]+/g,'[url]').slice(0,180);}
 async function creatorCloudApi(req,env,user){
- if(user.role!=='owner'||user.must_change)return xjson({error:'仅主管理员可操作云端采集'},403);
+ if(!creatorCloudAllowed(user))return xjson({error:'需要有内贸中心权限的运营账号'},403);
  const url=new URL(req.url),path=url.pathname;let target;try{target=creatorTarget(url.searchParams.get('account')||'garden');}catch{return xjson({error:'未知账号'},400);}
  if(!env.BROWSER)return xjson({error:'云端浏览器尚未绑定'},503);
  if(path==='/api/creator-cloud/collect'&&req.method==='POST'){try{const result=await creatorCloudCollect(env,target);await xput(creatorSetting(target,'schedule'),{enabled:true,enabled_at:Date.now()},env);return xjson(result);}catch(e){return xjson({error:'云端报表尚未完成读取，旧数据保留',detail:cloudSafeError(e)},502);}}
