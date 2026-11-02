@@ -2,10 +2,12 @@ import fs from 'node:fs';
 fs.rmSync('dist',{recursive:true,force:true});fs.mkdirSync('dist/public',{recursive:true});
 for(const name of ['editing.js','acquisition.js','allocation.js','crm.js','accounts.js','brand-ui.js','brand.css','files.html'])fs.copyFileSync('src/'+name,'dist/public/'+name);
 const html=fs.readFileSync('src/index.html','utf8').replace('<script src="app.js"></script>','<script src="/editing.js"></script><script src="/acquisition.js"></script><script src="/allocation.js"></script><script src="/crm.js"></script><script src="/accounts.js"></script><script src="/brand-ui.js"></script>');fs.writeFileSync('dist/public/index.html',html);
-const source=['worker/auth.mjs','worker/xhs-callback.mjs','worker/xhs-bindings.mjs','worker/files.mjs','worker/douyin.mjs','worker/crm.mjs','worker/acquisition.mjs','worker/allocation.mjs','worker/scheduled.mjs','worker/creator-config.mjs','worker/creator.mjs','worker/creator-cloud.mjs','worker/creator-collect.mjs'].map(p=>fs.readFileSync(p,'utf8').replaceAll('export async function ','async function ').replaceAll('export function ','function ')).join('\n');
+const source=['worker/auth.mjs','worker/xhs-callback.mjs','worker/xhs-bindings.mjs','worker/files.mjs','worker/douyin.mjs','worker/oceanengine.mjs','worker/crm.mjs','worker/acquisition.mjs','worker/allocation.mjs','worker/scheduled.mjs','worker/creator-config.mjs','worker/creator.mjs','worker/creator-cloud.mjs','worker/creator-collect.mjs'].map(p=>fs.readFileSync(p,'utf8').replaceAll('export async function ','async function ').replaceAll('export function ','function ')).join('\n');
 const app=fs.readFileSync('src/app.js','utf8');
 const entry=`
 export default {async scheduled(event,env,ctx){if(['0 23 * * *','30 3 * * *','30 6 * * *'].includes(event.cron))ctx.waitUntil(scheduledCreatorsSync(env));else ctx.waitUntil(scheduledSync(env));},async fetch(req,env){try{const url=new URL(req.url),p=url.pathname;
+if(p==='/integrations/oceanengine/callback')return await oeCallback(req,env);
+if(p==='/integrations/oceanengine')return oeSetup();
 if(p==='/integrations/douyin/callback')return await dyCallback(req,env);
 if(p==='/integrations/douyin')return dySetup();
 if(p==='/health')return json({ok:true,service:'yifun-marketing',database:!!env.DB,files:!!env.BUCKET});
