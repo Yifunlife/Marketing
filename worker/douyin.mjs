@@ -27,7 +27,7 @@ async function dyCloudStart(env){
   if(old?.session_id&&old.expires>Date.now()){try{const b=await pp.connect(env.BROWSER,old.session_id);await b.close();}catch{}}
   browser=await pp.launch(env.BROWSER,{keep_alive:600000});const page=await browser.newPage();
   await page.setViewport({width:1280,height:900});
-  const response=await page.goto('https://creator.douyin.com/',{waitUntil:'networkidle2',timeout:45000});
+  const response=await page.goto('https://creator.douyin.com/creator-micro/home',{waitUntil:'networkidle2',timeout:45000});
   await page.waitForFunction(()=>/扫码登录|验证码登录|创作者中心/.test(document.body.innerText),{timeout:15000});
   const ready=await page.evaluate(()=>/扫码登录|验证码登录/.test(document.body.innerText));
   if(!response?.ok()||!ready)return xjson({error:'云端未显示可用登录入口，未启用采集'},422);
