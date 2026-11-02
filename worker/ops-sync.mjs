@@ -46,7 +46,12 @@ async function opsSyncApi(req,env,user){
  const text=await page.evaluate(()=>document.body.innerText);
  if(id==='wechat-video'){const message=/扫码|扫描二维码|微信登录/.test(text)?'请先扫码并在微信确认。':'已打开视频号后台；账号身份和报表读取尚待核实，暂未标为采集成功。';await xput(key('failure'),{at:Date.now(),message},env);return xjson({ok:false,message,collection_ready:false});}
  const actual=text.match(/抖音号[：:]?\s*([A-Za-z0-9_.-]+)/)?.[1],bound=await xget(key('profile'),env),normalize=v=>String(v||'').replace(/\s+/g,'').toLowerCase();
- if(!actual)return xjson({ok:false,pending:true,message:'等待扫码、手机确认或验证码；完成后会自动采集。'},202);
+ if(!actual){
+  await env.BUCKET.put('private/ops-scan/'+id+'.png',await page.screenshot({type:'png'}),{httpMetadata:{contentType:'image/png'}});
+  if(/二维码.{0,8}(失效|过期)|扫码.{0,8}过期/.test(text))return xjson({error:'官方二维码已失效，请重新生成二维码后扫码；本次尚未登录。',preview_updated:true},410);
+  const message=/扫码成功|扫描成功|手机.{0,10}确认/.test(text)?'已扫码，等待手机确认或网页完成登录…':/验证码|安全验证/.test(text)&&!/扫码登录/.test(text)?'需要在官方登录窗口完成安全验证，完成后会自动继续。':'云端尚未完成登录，请扫描当前二维码并在手机确认。';
+  return xjson({ok:false,pending:true,message,preview_updated:true},202);
+ }
  if((target.identity&&actual!==target.identity)||(bound?.account_id&&actual!==bound.account_id)||!normalize(text).includes(normalize(target.name))){const message='当前账号与'+target.label+'不匹配，请切换对应账号；没有覆盖数据。';await xput(key('failure'),{at:Date.now(),message},env);return xjson({ok:false,message,collection_ready:false},409);}
  for(const [otherId,other] of Object.entries(opsSyncTargets)){if(!other.key||otherId===id)continue;const otherProfile=await xget(opsScanKey(otherId,'profile'),env);if(other.identity===actual||otherProfile?.account_id===actual)return xjson({error:'该抖音账号已属于'+other.label+'，不能重复绑定到'+target.label},409);}
  await xput(key('profile'),{account_id:actual,name:target.name,verified_at:Date.now()},env);
