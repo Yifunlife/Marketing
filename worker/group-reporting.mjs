@@ -2,7 +2,7 @@
 export class MarketingReporting extends WorkerEntrypoint {
  async fetch(req){
   if(req.method!=='GET'||new URL(req.url).pathname!=='/snapshot')return new Response(null,{status:404});
-  const rows=[];const groupIds={garden:'8',factory:'7',toy:'9',supertada:'2'};const bindings=await xget('advertiser_bindings',this.env)||{factory:'332719'};
+  const rows=[];const groupIds={garden:'8',factory:'7',toy:'9',supertada:'2'};const bindings={factory:'332719',garden:'136547',...await xget('advertiser_bindings',this.env)};
   const creators=await creatorReports(this.env);
   for(const [id,a] of Object.entries(creators)){
    if(id!==a.account_id)continue;
