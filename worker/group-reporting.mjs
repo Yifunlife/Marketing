@@ -6,7 +6,7 @@ export class MarketingReporting extends WorkerEntrypoint {
   const creators=await creatorReports(this.env);
   for(const [id,a] of Object.entries(creators)){
    if(id!==a.account_id)continue;
-   rows.push({id:'xhs-creator:'+id,platform:'小红书',kind:'创作报表',name:a.name||id,data_end:a.data_end,periods:{month:a.month,yesterday:a.yesterday},growth:a.growth});
+   rows.push({id:'xhs-creator:'+id,platform:'小红书',kind:'创作报表',name:a.display_name||a.name||id,fans:a.fans,fans_observed_at:a.observed_at,data_end:a.data_end,periods:{month:a.month,yesterday:a.yesterday},growth:a.growth});
   }
   for(const [key,platform] of [['reports','小红书'],['oe:reports','抖音']]){
    const r=await xget(key,this.env);
