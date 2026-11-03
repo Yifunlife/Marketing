@@ -41,7 +41,7 @@ async function opsSyncApi(req,env,user){
  }
  if(!login?.session_id||login.expires<Date.now())return xjson({error:'扫码窗口已过期，请重新准备'},410);
  browser=await pp.connect(env.BROWSER,login.session_id);const page=(await browser.pages()).find(p=>{try{return new URL(p.url()).origin===target.origin;}catch{return false;}});if(!page)return xjson({error:'登录窗口已关闭，请重新准备'},409);
- if(action==='live'){await page.setViewport({width:1920,height:1080,deviceScaleFactor:1});const cdp=await page.createCDPSession(),view=await cdp.send('Cloudflare.getLiveView',{mode:'tab',expiresInMs:Math.min(600000,login.expires-Date.now())}),u=new URL(view.devtoolsFrontendUrl);if(u.origin!=='https://live.browser.run')throw Error('invalid_live_host');return new Response(null,{status:303,headers:{...xhsHeaders,Location:u.href}});}
+ if(action==='live'){await page.setViewport({width:1920,height:1080,deviceScaleFactor:1});await page.evaluate(()=>{document.documentElement.style.zoom='0.65';window.scrollTo(0,0);});const cdp=await page.createCDPSession(),view=await cdp.send('Cloudflare.getLiveView',{mode:'tab',expiresInMs:Math.min(600000,login.expires-Date.now())}),u=new URL(view.devtoolsFrontendUrl);if(u.origin!=='https://live.browser.run')throw Error('invalid_live_host');return new Response(null,{status:303,headers:{...xhsHeaders,Location:u.href}});}
  if(target.key&&page.url().includes('/data-center/'))await page.goto(target.url,{waitUntil:'networkidle2',timeout:30000});
  const text=await page.evaluate(()=>document.body.innerText);
  if(id==='wechat-video'){const message=/扫码|扫描二维码|微信登录/.test(text)?'请先扫码并在微信确认。':'已打开视频号后台；账号身份和报表读取尚待核实，暂未标为采集成功。';await xput(key('failure'),{at:Date.now(),message},env);return xjson({ok:false,message,collection_ready:false});}
