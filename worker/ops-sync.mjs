@@ -20,9 +20,12 @@ async function opsSyncApi(req,env,user){
  return xjson({cards,can_operate:opsSyncAllowed(user,true),ad_automatic:(await xget('oe:schedule',env))?.enabled===true});
  }
  const target=Object.prototype.hasOwnProperty.call(opsSyncTargets,id)?opsSyncTargets[id]:null;if(!target)return xjson({error:'未知平台账号'},404);
- if(!['start','check','collect','live','preview'].includes(action))return xjson({error:'操作不存在'},404);
- if(['start','check','collect'].includes(action)&&req.method!=='POST'||['live','preview'].includes(action)&&req.method!=='GET')return xjson({error:'操作不支持'},405);
- if(['live','preview'].includes(action)&&!opsSyncAllowed(user,true))return xjson({error:'仅运营人员可打开扫码窗口'},403);
+ if(!['start','check','collect','live','preview','control','screen','input'].includes(action))return xjson({error:'操作不存在'},404);
+ if(['start','check','collect','input'].includes(action)&&req.method!=='POST'||['live','preview','control','screen'].includes(action)&&req.method!=='GET')return xjson({error:'操作不支持'},405);
+ if(['live','preview','control','screen'].includes(action)&&!opsSyncAllowed(user,true))return xjson({error:'仅运营人员可打开扫码窗口'},403);
+ if(['control','screen','input'].includes(action)&&!target.key)return xjson({error:'此账号不支持此登录窗口'},404);
+ if(action==='control')return opsControlPage(id,target.label);
+ let input;if(action==='input'){if(req.headers.get('Origin')!==url.origin)return xjson({error:'请从运营平台打开登录窗口'},403);try{input=await req.json();}catch{return xjson({error:'输入格式不正确'},400);}if(!opsValidInput(input))return xjson({error:'仅支持选择登录位置、输入手机号或验证码及常用按键'},400);}
  if(target.xhs){const map={start:'probe',check:'finish',collect:'collect',live:'live',preview:'screenshot'},u=new URL('/api/creator-cloud/'+map[action],req.url);u.searchParams.set('account',target.xhs);const response=await creatorCloudApi(new Request(u,{method:req.method,headers:req.headers}),env,user);if(action==='check'&&response.ok){const collectUrl=new URL('/api/creator-cloud/collect',req.url);collectUrl.searchParams.set('account',target.xhs);const collected=await creatorCloudApi(new Request(collectUrl,{method:'POST',headers:req.headers}),env,user);if(!collected.ok)await xput(creatorSetting(creatorTarget(target.xhs),'failure'),{at:Date.now(),error:'scan_followup_collection_failed',kind:'collection_failed'},env);return collected;}return response;}
  if(!env.BROWSER)return xjson({error:'云端浏览器暂不可用'},503);
  const key=kind=>opsScanKey(id,kind);
@@ -41,6 +44,8 @@ async function opsSyncApi(req,env,user){
  }
  if(!login?.session_id||login.expires<Date.now())return xjson({error:'扫码窗口已过期，请重新准备'},410);
  browser=await pp.connect(env.BROWSER,login.session_id);const page=(await browser.pages()).find(p=>{try{return new URL(p.url()).origin===target.origin;}catch{return false;}});if(!page)return xjson({error:'登录窗口已关闭，请重新准备'},409);
+ if(action==='screen'){return new Response(await page.screenshot({type:'png'}),{headers:{...xhsHeaders,'Content-Type':'image/png'}});}
+ if(action==='input'){const text=await page.evaluate(()=>document.body.innerText);if(/抖音号[：:]?\s*([A-Za-z0-9_.-]+)/.test(text))return xjson({error:'已进入账号后台，登录输入已停止，请返回同步区查看采集结果'},409);if(input.kind==='click'){const viewport=await page.evaluate(()=>({width:window.innerWidth,height:window.innerHeight}));await page.mouse.click(input.x*viewport.width,input.y*viewport.height);}else if(input.kind==='digits'){const focused=await page.evaluate(()=>document.activeElement?.tagName==='INPUT'&&document.activeElement.type!=='password');if(!focused)return xjson({error:'请先点击下方官方画面里的手机号或验证码输入框，再填写数字'},409);await page.keyboard.type(input.text);}else await page.keyboard.press(input.key);return xjson({ok:true});}
  if(action==='live'){await page.setViewport({width:1920,height:1080,deviceScaleFactor:1});await page.evaluate(()=>{document.documentElement.style.zoom='0.65';window.scrollTo(0,0);});const cdp=await page.createCDPSession(),view=await cdp.send('Cloudflare.getLiveView',{mode:'tab',expiresInMs:Math.min(600000,login.expires-Date.now())}),u=new URL(view.devtoolsFrontendUrl);if(u.origin!=='https://live.browser.run')throw Error('invalid_live_host');return new Response(null,{status:303,headers:{...xhsHeaders,Location:u.href}});}
  if(target.key&&page.url().includes('/data-center/'))await page.goto(target.url,{waitUntil:'networkidle2',timeout:30000});
  const text=await page.evaluate(()=>document.body.innerText);
@@ -64,3 +69,16 @@ async function opsSyncApi(req,env,user){
  }catch(e){const message='平台登录或报表读取未完成，请打开登录窗口检查；原数据保留。';await xput(key('failure'),{at:Date.now(),message,detail:cloudSafeError(e)},env);return xjson({error:message},502);}
  finally{if(browser)browser.disconnect();}
 }
+
+function opsValidInput(v){return !!v&&((v.kind==='click'&&Number.isFinite(v.x)&&Number.isFinite(v.y)&&v.x>=0&&v.x<1&&v.y>=0&&v.y<1)||(v.kind==='digits'&&typeof v.text==='string'&&/^\d{1,16}$/.test(v.text))||(v.kind==='key'&&['Tab','Backspace','Enter','ArrowLeft','ArrowRight'].includes(v.key)));}
+function opsControlClient(){
+ const root=document.querySelector('main'),image=document.querySelector('#screen'),status=document.querySelector('#status'),digits=document.querySelector('#digits');const base=location.pathname.replace(/\/control$/,'');let busy=false,timer;
+ function message(text){status.textContent=text;}
+ async function refresh(){if(busy)return;try{const r=await fetch(base+'/screen');if(!r.ok){const d=await r.json();message(d.error||'窗口暂不可用');return;}const blob=await r.blob(),old=image.src;image.src=URL.createObjectURL(blob);if(old.startsWith('blob:'))URL.revokeObjectURL(old);}catch{message('窗口暂时连接不上，请稍后刷新。');}}
+ async function send(value){if(busy)return;busy=true;root.setAttribute('aria-busy','true');message('正在操作官方登录页面…');try{const r=await fetch(base+'/input',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(value)}),d=await r.json();if(!r.ok)throw Error(d.error||'操作未完成');if(value.kind==='digits')digits.value='';message('操作已发送，请查看下方官方页面是否已更新。');}catch(e){message(e.message);}finally{busy=false;root.removeAttribute('aria-busy');await refresh();}}
+ image.onclick=e=>{const rect=image.getBoundingClientRect();send({kind:'click',x:(e.clientX-rect.left)/rect.width,y:(e.clientY-rect.top)/rect.height});};
+ document.querySelector('#type').onclick=()=>{if(!/^\d{1,16}$/.test(digits.value)){message('请输入手机号或数字验证码。');return;}send({kind:'digits',text:digits.value});};
+ document.querySelectorAll('[data-key]').forEach(b=>b.onclick=()=>send({kind:'key',key:b.dataset.key}));document.querySelector('#refresh').onclick=refresh;
+ refresh();timer=setInterval(refresh,4000);window.addEventListener('pagehide',()=>clearInterval(timer));
+}
+function opsControlPage(id,label){return new Response('<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>抖音'+label+' · 登录验证</title><style>body{margin:0;background:#f4f7fb;color:#19375f;font:16px/1.6 system-ui}main{max-width:1400px;margin:24px auto;padding:20px}header,.tools{display:flex;gap:12px;align-items:center;flex-wrap:wrap}h1{font-size:24px}button,input{font:inherit;padding:10px;border:1px solid #cbd7e5;border-radius:8px}button{cursor:pointer;background:#204a7a;color:white}input{max-width:260px}#screen{display:block;width:100%;height:auto;margin-top:16px;background:white;border:1px solid #dce4ef;cursor:pointer}#status{min-height:26px}a{color:#204a7a}</style><main><header><h1>抖音 · '+label+' 登录验证</h1><a href="/#ops-sync" target="_blank" rel="noopener noreferrer">返回同步区</a></header><p>下方是可操作的官方登录画面。先点下方手机号或验证码框，再在这里输入数字，点击“填写到选中位置”。需要获取验证码时，直接点下方画面里的对应按钮。这里只支持手机号和数字验证码，不填写密码。</p><div class="tools"><input id="digits" type="password" inputmode="numeric" autocomplete="off" aria-label="手机号或验证码" placeholder="手机号或验证码"><button id="type">填写到选中位置</button><button data-key="Backspace">退格</button><button data-key="Tab">下一个输入框</button><button id="refresh">刷新画面</button></div><p id="status" role="status">正在连接官方登录画面…</p><img id="screen" alt="可点击的抖音官方登录画面"></main><script>('+opsControlClient.toString()+')();</script></html>',{headers:{...xhsHeaders,'Content-Type':'text/html; charset=utf-8','Content-Security-Policy':"default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' blob:; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"}});}
