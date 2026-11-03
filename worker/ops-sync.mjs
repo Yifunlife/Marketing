@@ -32,7 +32,7 @@ async function opsSyncApi(req,env,user){
  const pp=await cloudPuppeteer();let login=await xget(key('login'),env);
  if(action==='start'){
   if(login?.session_id&&login.expires>Date.now()){try{const old=await pp.connect(env.BROWSER,login.session_id);await old.close();}catch{}}
-  browser=await pp.launch(env.BROWSER,{keep_alive:600000});const page=await browser.newPage();await page.setViewport({width:1280,height:900});
+  browser=await pp.launch(env.BROWSER,{keep_alive:600000});const page=await browser.newPage();await page.setViewport({width:1920,height:1080,deviceScaleFactor:1});
   const saved=await xget(key('state'),env);if(saved?.cookies){await page.setCookie(...saved.cookies);await page.evaluateOnNewDocument(({origin,storage})=>{if(location.origin===origin)for(const [k,v] of Object.entries(storage||{}))localStorage.setItem(k,v);},{origin:target.origin,storage:saved.storage});}
   await page.goto(target.url,{waitUntil:'networkidle2',timeout:45000});await page.waitForNetworkIdle({idleTime:700,timeout:8000}).catch(()=>{});
   await env.BUCKET.put('private/ops-scan/'+id+'.png',await page.screenshot({type:'png'}),{httpMetadata:{contentType:'image/png'}});
@@ -41,7 +41,7 @@ async function opsSyncApi(req,env,user){
  }
  if(!login?.session_id||login.expires<Date.now())return xjson({error:'扫码窗口已过期，请重新准备'},410);
  browser=await pp.connect(env.BROWSER,login.session_id);const page=(await browser.pages()).find(p=>{try{return new URL(p.url()).origin===target.origin;}catch{return false;}});if(!page)return xjson({error:'登录窗口已关闭，请重新准备'},409);
- if(action==='live'){const cdp=await page.createCDPSession(),view=await cdp.send('Cloudflare.getLiveView',{mode:'full',expiresInMs:Math.min(600000,login.expires-Date.now())}),u=new URL(view.devtoolsFrontendUrl);if(u.origin!=='https://live.browser.run')throw Error('invalid_live_host');return new Response(null,{status:303,headers:{...xhsHeaders,Location:u.href}});}
+ if(action==='live'){await page.setViewport({width:1920,height:1080,deviceScaleFactor:1});const cdp=await page.createCDPSession(),view=await cdp.send('Cloudflare.getLiveView',{mode:'tab',expiresInMs:Math.min(600000,login.expires-Date.now())}),u=new URL(view.devtoolsFrontendUrl);if(u.origin!=='https://live.browser.run')throw Error('invalid_live_host');return new Response(null,{status:303,headers:{...xhsHeaders,Location:u.href}});}
  if(target.key&&page.url().includes('/data-center/'))await page.goto(target.url,{waitUntil:'networkidle2',timeout:30000});
  const text=await page.evaluate(()=>document.body.innerText);
  if(id==='wechat-video'){const message=/扫码|扫描二维码|微信登录/.test(text)?'请先扫码并在微信确认。':'已打开视频号后台；账号身份和报表读取尚待核实，暂未标为采集成功。';await xput(key('failure'),{at:Date.now(),message},env);return xjson({ok:false,message,collection_ready:false});}
@@ -49,7 +49,7 @@ async function opsSyncApi(req,env,user){
  if(!actual){
   await env.BUCKET.put('private/ops-scan/'+id+'.png',await page.screenshot({type:'png'}),{httpMetadata:{contentType:'image/png'}});
   if(/二维码.{0,8}(失效|过期)|扫码.{0,8}过期/.test(text))return xjson({error:'官方二维码已失效，请重新生成二维码后扫码；本次尚未登录。',preview_updated:true},410);
-  const message=/扫码成功|扫描成功|手机.{0,10}确认/.test(text)?'已扫码，等待手机确认或网页完成登录…':/验证码|安全验证/.test(text)&&!/扫码登录/.test(text)?'需要在官方登录窗口完成安全验证，完成后会自动继续。':'云端尚未完成登录，请扫描当前二维码并在手机确认。';
+  const message=/扫码成功|扫描成功|手机.{0,10}确认/.test(text)?'已扫码，等待手机确认或网页完成登录…':/身份验证|验证码|安全验证/.test(text)?'需要在官方登录窗口完成安全验证，完成后会自动继续。':'云端尚未完成登录，请扫描当前二维码并在手机确认。';
   return xjson({ok:false,pending:true,message,preview_updated:true},202);
  }
  if((target.identity&&actual!==target.identity)||(bound?.account_id&&actual!==bound.account_id)||!normalize(text).includes(normalize(target.name))){const message='当前账号与'+target.label+'不匹配，请切换对应账号；没有覆盖数据。';await xput(key('failure'),{at:Date.now(),message},env);return xjson({ok:false,message,collection_ready:false},409);}
