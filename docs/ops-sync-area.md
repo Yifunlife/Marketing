@@ -16,3 +16,4 @@
 验收截图 /tmp/yifun-ops-sync-area-verified.png；两平台二维码验证图 /tmp/yifun-ops-douyin-login.png、/tmp/yifun-ops-wechat-login.png，均为临时文件，不提交仓库。
 
 2026-11-03 登录交互修复：四个抖音账号的“打开登录窗口”使用 `/api/ops-sync/{id}/control`。该窗口通过服务端 Puppeteer 转发画面内点击和数字输入，按实际浏览器视口比例换算坐标，避免 Live View 裁切及点击未响应。只接受手机号/数字验证码及有限按键，输入只发给该账号已有官方登录页面，不写入 D1/R2；输入框未聚焦、页面离开官方域名或进入已登录后台时停止转发。只读人员不能访问画面或输入，输入请求必须同源。已有 Live View 入口保留用于排查。登录完成后同步区原有检查继续核实账号并采集；仍不能将登录成功视为完整报表接通。
+根因补充：@cloudflare/puppeteer 的 connect(endpoint, sessionId) 调用 connectToCDPBrowser 时未传 defaultViewport，默认 800×600。每次重连后必须在读取、截图和输入前恢复 1920×1080，不能仅在初次创建或打开 Live View 时设置。登录窗口脚本独立作为静态资产发布，避免打包器为函数增加的辅助引用出现在内联序列化脚本中。
