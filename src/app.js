@@ -115,6 +115,11 @@ function accountManagement(a,data){
  const delta=(month[field]-prior[field])/prior[field]*100;
  add(delta<0?'复盘流量下降':'复盘增长内容','本月'+(field==='views'?'观看':'播放')+'较上月同期 '+(delta>0?'↑':delta<0?'↓':'→')+Math.abs(delta).toFixed(1)+'%','对照两期发布数量、题材与广告投放记录，定位变化来源，先核查再调整。');
  }
+ const days=(data?.daily||[]).filter(day=>Number.isFinite(day.plays)),last=days.at(-1),before=days.at(-2);
+ if(last&&before&&before.plays>0&&Date.parse(last.date)-Date.parse(before.date)===86400000){
+ const change=(last.plays-before.plays)/before.plays*100;
+ if(change<=-20)add('排查播放波动',last.date+' 播放 '+last.plays+'，较前一日 ↓'+Math.abs(change).toFixed(1)+'%','先核查报表是否更新，再对照当天发布、内容表现和广告投放记录；单日下降不直接认定内容失效。');
+ }
  const top=data?.top?.items?.[0];
  if(top)add('选题复盘候选','本文件累计播放第1：'+shortWorkTitle(top.title)+'（'+Number(top.plays).toLocaleString('zh-CN')+'）','复盘开头、产品卖点与客户留言，提炼可测试的下一条选题；历史累计领先不代表昨日领先。');
  const ad=accountAdReport(a)?.periods?.month;
@@ -122,7 +127,7 @@ function accountManagement(a,data){
  if(!tasks.length)add('检查内容效果',Number.isFinite(net)?'本月净增 '+net+' 人':'当前缺少完整同期对比','对照内容表现、客户需求和发布排期安排复盘；补齐同口径数据后评估变化。');
  const number=n=>Number.isFinite(n)?n.toLocaleString('zh-CN'):'—';
  const money=ad?.status==='ok'&&Number.isFinite(ad.metrics?.fee)?'¥'+ad.metrics.fee.toLocaleString('zh-CN',{maximumFractionDigits:2}):'—';
- return '<section class="management-review"><div class="review-heading"><h3>运营诊断与行动</h3><span>'+owner+' · '+tasks.length+' 项关注</span></div><div class="review-summary"><div class="review-number"><small>本月净增粉丝</small><strong>'+number(net)+'</strong><em>新增关注 − 取消关注</em></div><div class="review-number"><small>本月内容产出</small><strong>'+number(month?.posts)+'</strong><em>已核实发布数量</em></div><div class="review-number"><small>本月广告花费</small><strong>'+money+'</strong><em>账号广告报表 · 以广告区日期为准</em></div></div><div class="review-actions">'+tasks.map(([label,evidence,action])=>'<article class="review-action '+(label.includes('复盘候选')||label==='复盘增长内容'?'opportunity':'attention')+'"><div class="action-top"><strong>'+displayText(label)+'</strong><span class="action-tag">'+(label==='先补数据'?'数据待补':'待复盘')+'</span></div><p class="action-evidence">'+displayText(evidence)+'</p><p class="action-do">'+displayText(action)+'</p><footer>负责人 · '+owner+'　|　建议待验证</footer></article>').join('')+'</div><details><summary>分析依据与待补链路</summary><p>建议按已有报表规则生成，暂未确认变化原因。账号增长 → 单条内容 → 广告效率 → 客户质量 → 成交；客户与成交尚未完成本账号归因核实，不用私信次数代替有效客户。</p><p>作品ID、封面、逐日作品表现与逐条广告明细按实际接入情况展示；缺少关联时不推断视频带客或成交回报。</p></details></section>';
+ return '<section class="management-review"><div class="review-heading"><h3>运营诊断与行动</h3><span>'+owner+' · '+tasks.length+' 项关注</span></div><div class="review-summary"><div class="review-number"><small>本月净增粉丝</small><strong>'+number(net)+'</strong><em>新增关注 − 取消关注</em></div><div class="review-number"><small>本月内容产出</small><strong>'+number(month?.posts)+'</strong><em>已核实发布数量</em></div><div class="review-number"><small>本月广告花费</small><strong>'+money+'</strong><em>账号广告报表 · 以广告区日期为准</em></div></div><div class="review-actions">'+tasks.map(([label,evidence,action])=>'<article class="review-action '+(label.includes('复盘候选')||label==='复盘增长内容'?'opportunity':'attention')+'"><div class="action-top"><strong>'+displayText(label)+'</strong><span class="action-tag">'+(label==='先补数据'?'数据待补':'待复盘')+'</span></div><p class="action-evidence">'+displayText(evidence)+'</p><p class="action-do">'+displayText(action)+'</p><footer>负责人 · '+owner+'　|　建议待验证</footer></article>').join('')+'</div><details><summary>分析依据与待补链路</summary><p>建议按已有报表规则生成，暂未确认变化原因；播放日降幅达到20%时提示排查，属看板提醒规则。账号增长 → 单条内容 → 广告效率 → 客户质量 → 成交；客户与成交尚未完成本账号归因核实，不用私信次数代替有效客户。</p><p>作品ID、封面、逐日作品表现与逐条广告明细按实际接入情况展示；缺少关联时不推断视频带客或成交回报。</p></details></section>';
 
 }
 function platformManagement(rows){
