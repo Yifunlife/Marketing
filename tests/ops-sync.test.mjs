@@ -26,3 +26,43 @@ test('login HTML loads its static script without serializing a bundled function'
 test('formatted phone input is accepted without overwriting the official form',async()=>{const c=context();let typed,checks=0;const field={boundingBox:async()=>({x:1,y:1,width:100,height:30}),click:async()=>{},press:async()=>{},type:async v=>typed=v,evaluate:async(fn,value)=>{checks++;return fn({value:'138 0013 8000'},value);}};c.xget=async()=>({session_id:'s',expires:Date.now()+60000});c.cloudPuppeteer=async()=>({connect:async()=>({pages:async()=>[{url:()=> 'https://creator.douyin.com/creator-micro/home',evaluate:async()=> '验证码登录',frames:()=>[{url:()=> 'https://creator.douyin.com/creator-micro/home',$:async()=>field}]}],disconnect:()=>{}})});const r=await c.opsSyncApi(new Request('https://site/api/ops-sync/douyin-factory/input',{method:'POST',headers:{Origin:'https://site'},body:JSON.stringify({kind:'digits',field:'phone',text:'13800138000'})}),{BROWSER:{}},{role:'owner'});assert.equal(r.status,200);assert.equal(typed,'13800138000');assert.equal(checks,1);});
 test('SMS action clicks the official visible control once without claiming delivery',async()=>{const c=context();let clicks=0;c.xget=async()=>({session_id:'s',expires:Date.now()+60000});c.cloudPuppeteer=async()=>({connect:async()=>({pages:async()=>[{url:()=> 'https://creator.douyin.com/creator-micro/home',evaluate:async()=> '验证码登录',frames:()=>[{url:()=> 'https://creator.douyin.com/creator-micro/home',evaluateHandle:async()=>({asElement:()=>({click:async()=>clicks++})})}]}],disconnect:()=>{}})});const r=await c.opsSyncApi(new Request('https://site/api/ops-sync/douyin-factory/input',{method:'POST',headers:{Origin:'https://site'},body:JSON.stringify({kind:'sms'})}),{BROWSER:{}},{role:'owner'});assert.equal(r.status,200);assert.equal(clicks,1);assert.match((await r.json()).message,/尚未确认短信发送成功/);});
 test('login health reports error categories without exposing console text or credentials',async()=>{const c=context();let callback,detached=false;const health=await c.opsLoginHealth({createCDPSession:async()=>({on:(name,fn)=>callback=fn,send:async name=>{if(name==='Log.enable'){callback({entry:{level:'error',source:'network',text:'Failed request https://example.test/?code=private net::ERR_CONNECTION_TIMED_OUT'}});callback({entry:{level:'warning',source:'javascript',text:'private phone reference ReferenceError'}});}},detach:async()=>detached=true}),evaluate:async()=>[]});assert.equal(health.available,true);assert.equal(health.logs[0].category,'ERR_CONNECTION_TIMED_OUT');assert.equal(health.logs[1].category,'reference_error');assert(!JSON.stringify(health).includes('private'));assert(detached);});
+
+test('full-window login maps clicks inside the rendered image and retires expired screens',async()=>{
+ const elements=new Map(),posted=[],listeners=new Map();
+ const element=selector=>{
+  if(!elements.has(selector))elements.set(selector,{src:'',value:'',setAttribute(){},removeAttribute(key){delete this[key];}});
+  return elements.get(selector);
+ };
+ const image=element('#screen'),button=element('#fullscreen'),classes=new Set();
+ element('#stage').classList={toggle:(name,active)=>active?classes.add(name):classes.delete(name),contains:name=>classes.has(name)};
+ Object.assign(image,{complete:true,naturalWidth:1920,naturalHeight:1080,getBoundingClientRect:()=>({left:10,top:20,width:1000,height:800})});
+ let expired=false;
+ vm.runInNewContext(fs.readFileSync('src/ops-control.js','utf8'),{
+  location:{pathname:'/api/ops-sync/douyin-factory/control'},URL:{createObjectURL:()=> 'blob:preview',revokeObjectURL(){}},
+  document:{querySelector:element,querySelectorAll:selector=>selector.startsWith('.tools')?[element('#digits'),element('#sms')]:[],addEventListener:(event,listener)=>listeners.set(event,listener)},
+  window:{addEventListener(){}},setInterval(){},clearInterval(){},
+  fetch:async(url,options)=>{
+   if(options){posted.push(JSON.parse(options.body));return Response.json({ok:true});}
+   return expired?Response.json({error:'扫码窗口已过期，请重新准备'},{status:410}):new Response('image');
+  },
+ });
+ await new Promise(resolve=>setImmediate(resolve));
+ button.onclick();
+ assert(classes.has('fullscreen'));
+ image.onclick({clientX:510,clientY:80});
+ image.onclick({clientX:760,clientY:420});
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(posted.length,1);
+ assert.equal(posted[0].kind,'click');
+ assert(Math.abs(posted[0].x-0.75)<1e-9);
+ assert(Math.abs(posted[0].y-0.5)<1e-9);
+ listeners.get('keydown')({key:'Escape'});
+ assert(!classes.has('fullscreen'));
+ expired=true;
+ await element('#refresh').onclick();
+ assert.equal(image.hidden,true);
+ assert.equal(element('#sms').disabled,true);
+ assert.equal(element('#status').textContent,'扫码窗口已过期，请重新准备');
+ await element('#sms').onclick();
+ assert.equal(posted.length,1);
+});

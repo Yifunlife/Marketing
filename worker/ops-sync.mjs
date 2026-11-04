@@ -74,7 +74,32 @@ async function opsSyncApi(req,env,user){
 
 function opsValidInput(v){return !!v&&((v.kind==='sms')||(v.kind==='click'&&Number.isFinite(v.x)&&Number.isFinite(v.y)&&v.x>=0&&v.x<1&&v.y>=0&&v.y<1)||(v.kind==='digits'&&typeof v.text==='string'&&/^\d{1,16}$/.test(v.text))||(v.kind==='key'&&['Tab','Backspace','Enter','ArrowLeft','ArrowRight'].includes(v.key)));}
 
-function opsControlPage(id,label){return new Response('<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>抖音'+label+' · 登录验证</title><style>body{margin:0;background:#f4f7fb;color:#19375f;font:16px/1.6 system-ui}main{max-width:1400px;margin:24px auto;padding:20px}header,.tools{display:flex;gap:12px;align-items:center;flex-wrap:wrap}h1{font-size:24px}button,input{font:inherit;padding:10px;border:1px solid #cbd7e5;border-radius:8px}button{cursor:pointer;background:#204a7a;color:white}input{max-width:260px}#screen{display:block;width:auto;max-width:100%;max-height:65vh;height:auto;margin:16px auto;background:white;border:1px solid #dce4ef;cursor:pointer}#status{min-height:26px}a{color:#204a7a}</style><main><header><h1>抖音 · '+label+' 登录验证</h1><a href="/#ops-sync" target="_blank" rel="noopener noreferrer">返回同步区</a></header><p>下方是可操作的官方登录画面。在这里输入手机号或验证码，再点击对应的填写按钮。需要获取验证码时，直接点下方画面里的对应按钮。这里只支持手机号和数字验证码，不填写密码。</p><div class="tools"><input id="digits" type="password" inputmode="numeric" autocomplete="off" aria-label="手机号或验证码" placeholder="手机号或验证码"><button id="phone">填写手机号</button><button id="code">填写验证码</button><button id="sms">获取短信验证码</button><button data-key="Backspace">退格</button><button data-key="Tab">下一个输入框</button><button id="refresh">刷新画面</button></div><p id="status" role="status">正在连接官方登录画面…</p><img id="screen" alt="可点击的抖音官方登录画面"></main><script src="/ops-control.js"></script></html>',{headers:{...xhsHeaders,'Content-Type':'text/html; charset=utf-8','Content-Security-Policy':"default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; img-src 'self' blob:; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"}});}
+function opsControlPage(id,label){
+ return new Response(`<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>抖音${label} · 登录验证</title>
+ <style>
+ body{margin:0;background:#f4f7fb;color:#19375f;font:16px/1.5 system-ui}
+ main{min-height:100dvh;display:flex;flex-direction:column}
+ header,.tools{display:flex;gap:8px 12px;align-items:center;flex-wrap:wrap;padding:8px 16px}
+ header h1{font-size:20px;margin:0}
+ button,input{font:inherit;padding:6px 10px;border:1px solid #cbd7e5;border-radius:8px}
+ button{cursor:pointer;background:#204a7a;color:white}
+ button:disabled{cursor:default;opacity:.55}
+ input{max-width:260px}
+ #stage{position:relative;flex:1;min-height:240px;background:#17202c;display:flex}
+ #stage.fullscreen{position:fixed;inset:0;z-index:1}
+ #fullscreen{position:absolute;top:8px;right:8px;z-index:1}
+ #screen{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;cursor:pointer}
+ #status{min-height:24px;margin:0;padding:4px 16px;overflow-wrap:anywhere}
+ #stage.fullscreen+#status{position:fixed;z-index:2;bottom:8px;left:8px;margin-right:8px;border-radius:8px;color:white;background:#17202c;pointer-events:none}
+ a{color:#204a7a}
+ </style>
+ <main>
+ <header><h1>抖音 · ${label} 登录验证</h1><a href="/#ops-sync" target="_blank" rel="noopener noreferrer">返回同步区</a></header>
+ <div class="tools"><input id="digits" type="password" inputmode="numeric" autocomplete="off" aria-label="手机号或验证码" placeholder="手机号或验证码"><button id="phone">填写手机号</button><button id="code">填写验证码</button><button id="sms">获取短信验证码</button><button data-key="Backspace">退格</button><button data-key="Tab">下一个输入框</button><button id="refresh">刷新画面</button></div>
+ <div id="stage"><button id="fullscreen" type="button" aria-pressed="false">全屏显示</button><img id="screen" alt="可点击的抖音官方登录画面" hidden></div>
+ <p id="status" role="status">正在连接官方登录画面…</p>
+ </main><script src="/ops-control.js"></script></html>`,{headers:{...xhsHeaders,'Content-Type':'text/html; charset=utf-8','Content-Security-Policy':"default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; img-src 'self' blob:; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"}});
+}
 
 async function opsConnectBrowser(pp,env,sessionId){const [{WorkersWebSocketTransport},{connectToCDPBrowser}]=await Promise.all([import('@cloudflare/puppeteer/internal/cloudflare/WorkersWebSocketTransport.js'),import('@cloudflare/puppeteer/internal/cloudflare/utils.js')]);const transport=await WorkersWebSocketTransport.create(env.BROWSER,sessionId);return connectToCDPBrowser(transport,{sessionId,defaultViewport:null});}
 
