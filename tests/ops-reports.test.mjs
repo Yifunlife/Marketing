@@ -5,7 +5,7 @@ import vm from 'node:vm';
 import {webcrypto} from 'node:crypto';
 function setup(){
  const rows=[],objects=new Map();
- const context={URL,Response,Date,crypto:webcrypto,Uint8Array,xhsHeaders:{},xjson:(value,status=200)=>Response.json(value,{status})};
+ const context={URL,Response,Date,crypto:webcrypto,Uint8Array,opsReportSnapshot:async()=>null,opsImportReport:async()=>({status:'pending',message:'待核对'}),xhsHeaders:{},xjson:(value,status=200)=>Response.json(value,{status})};
  vm.createContext(context);vm.runInContext(fs.readFileSync('worker/ops-reports.mjs','utf8'),context);
  const env={BUCKET:{put:async(key,value)=>objects.set(key,value),get:async key=>objects.has(key)?{body:objects.get(key)}:null},DB:{prepare:query=>({bind(...args){return {first:async()=>query.includes('sha256=?')?rows.find(row=>row.account_key===args[0]&&row.report_kind===args[1]&&row.sha256===args[2]):rows.find(row=>row.id===args[0]&&row.account_key===args[1]),all:async()=>({results:rows.filter(row=>row.account_key===args[0])}),run:async()=>{const keys=['id','account_key','report_kind','sha256','object_key','original_name','content_type','size_bytes','uploaded_by','uploaded_at','status'];rows.push(Object.fromEntries(keys.map((key,index)=>[key,args[index]])));}};}})}};
  return {context,env,rows,objects};

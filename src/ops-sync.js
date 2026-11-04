@@ -17,6 +17,8 @@
  const reportStatus=status=>({pending:'已上传，待核对',imported:'读取成功',failed:'读取失败',rejected:'核对未通过'}[status]||'处理状态待确认');
  async function reports(id,list,daily){
   const data=await request('/api/ops-sync/'+id+'/reports');
+  const details=daily.previousElementSibling;
+  if(data.last_at){details.querySelectorAll('dd')[0].textContent=stamp(data.last_at);details.querySelectorAll('dd')[1].textContent=data.data_end||'尚未核实';}
   daily.replaceChildren();
   const current=data.today||[];
   daily.append(el('strong',(data.day||'今日')+' · 已上传 '+current.length+'/3'));
@@ -29,13 +31,13 @@
    badges.append(badge);
   }
   daily.append(badges);
-  for(const report of current.filter(value=>value.review_message))daily.append(el('p',report.review_message,'review-message'));
+  for(const report of current.filter(value=>value.review_message))daily.append(el('p',report.review_message,report.status==='imported'?'muted':'review-message'));
   list.replaceChildren();
   for(const report of data.reports){
    const item=el('li'),link=el('a',report.original_name);
    link.href='/api/ops-sync/'+id+'/reports?file='+encodeURIComponent(report.id);
    item.append(link,el('div',(kinds[report.report_kind]||'报表')+' · '+stamp(report.uploaded_at)+' · '+reportStatus(report.status),'muted'));
-   if(report.review_message)item.append(el('div',report.review_message,'review-message'));
+   if(report.review_message)item.append(el('div',report.review_message,report.status==='imported'?'muted':'review-message'));
    list.append(item);
   }
   if(!data.reports.length)list.append(el('li','尚未上传报表','muted'));
@@ -87,7 +89,7 @@
     };
     const history=el('details');
     history.append(el('summary','上传记录'),list);
-    box.append(form,el('p','CSV / XLSX / XLS · 单份小于20MB · 上传后待核对','file-hint'),history);
+    box.append(form,el('p','CSV / XLSX · 单份小于20MB · 上传后自动读取','file-hint'),history);
     cards.append(box);
     const update=()=>reports(account.id,list,daily).catch(error=>{daily.textContent='今日上传状态暂不可用';list.textContent=error.message;});
     refreshers.push(update);

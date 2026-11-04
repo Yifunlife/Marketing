@@ -12,7 +12,8 @@ async function opsReportsApi(req,env,user,target){
   const now=Date.now(),day=new Date(now+8*3600000).toISOString().slice(0,10);
   const start=Date.parse(day+'T00:00:00+08:00');
   const today=await env.DB.prepare('SELECT report_kind,status,uploaded_at,review_message FROM (SELECT report_kind,status,uploaded_at,review_message,ROW_NUMBER() OVER (PARTITION BY report_kind ORDER BY uploaded_at DESC,id DESC) AS position FROM creator_report_uploads WHERE account_key=? AND uploaded_at>=? AND uploaded_at<?) WHERE position=1').bind(target.key,start,start+86400000).all();
-  return xjson({reports:rows.results||[],day,today:today.results||[]});
+  const snapshot=await opsReportSnapshot(target.key,env,null);
+  return xjson({reports:rows.results||[],day,today:today.results||[],last_at:snapshot?.at||null,data_end:snapshot?.data_end||null});
  }
  if(req.method!=='POST')return xjson({error:'方法不支持'},405);
  if(req.headers.get('Origin')!==url.origin)return xjson({error:'请从运营看板上传报表'},403);
@@ -32,11 +33,12 @@ async function opsReportsApi(req,env,user,target){
  if(ext==='xls'&&![208,207,17,224,161,177,26,225].every((value,index)=>bytes[index]===value))return xjson({error:'XLS文件格式不正确，请优先导出XLSX或CSV'},415);
  if(ext==='csv'&&bytes.includes(0))return xjson({error:'请上传UTF-8或GBK编码的CSV文件'},415);
  const sha256=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',buffer)),value=>value.toString(16).padStart(2,'0')).join('');
- const existing=await env.DB.prepare('SELECT id FROM creator_report_uploads WHERE account_key=? AND report_kind=? AND sha256=?').bind(target.key,kind,sha256).first();
- if(existing)return xjson({id:existing.id,duplicate:true,message:'此账号已上传过相同报表，无需重复上传。'});
+ const existing=await env.DB.prepare('SELECT * FROM creator_report_uploads WHERE account_key=? AND report_kind=? AND sha256=?').bind(target.key,kind,sha256).first();
+ if(existing){const result=await opsImportReport(existing,buffer,env);return xjson({id:existing.id,duplicate:true,...result});}
  const id=crypto.randomUUID(),key='private/creator-reports/douyin/'+target.key+'/'+kind+'/'+sha256;
  await env.BUCKET.put(key,buffer,{httpMetadata:{contentType:types[ext]}});
  await env.DB.prepare('INSERT OR IGNORE INTO creator_report_uploads (id,account_key,report_kind,sha256,object_key,original_name,content_type,size_bytes,uploaded_by,uploaded_at,status) VALUES(?,?,?,?,?,?,?,?,?,?,?)').bind(id,target.key,kind,sha256,key,name,types[ext],length,user.id,Date.now(),'pending').run();
- const stored=await env.DB.prepare('SELECT id FROM creator_report_uploads WHERE account_key=? AND report_kind=? AND sha256=?').bind(target.key,kind,sha256).first();
- return xjson({id:stored.id,message:'报表已保存，等待核对账号、日期和表头。运营指标尚未更新。'},201);
+ const stored=await env.DB.prepare('SELECT * FROM creator_report_uploads WHERE account_key=? AND report_kind=? AND sha256=?').bind(target.key,kind,sha256).first();
+ const result=await opsImportReport(stored,buffer,env);
+ return xjson({id:stored.id,...result},201);
 }

@@ -41,6 +41,7 @@ details{margin-top:10px;border-top:1px solid #edf1f6;padding-top:8px;font-size:1
 summary{cursor:pointer;color:#4e6580}
 .reports{padding-left:16px;margin:6px 0 0}
 .reports li{padding:5px 0;overflow-wrap:anywhere}
+.tutorial{margin-bottom:20px;background:white}.tutorial h2{font-size:16px}.tutorial ol{padding-left:20px;margin:10px 0;font-size:13px}.tutorial li{margin:8px 0}
 .review-message{font-size:12px;color:#ae4937;margin:6px 0 0}
 .daily-status{margin:0 0 12px;font-size:12px}
 .daily-status strong{font-size:12px;font-weight:500;color:#536b86}
@@ -66,6 +67,18 @@ summary{cursor:pointer;color:#4e6580}
 </div>
 <p id="global" role="status">正在加载账号与报表记录…</p>
 <div class="cards" id="cards"></div>
+<section class="notice tutorial" aria-labelledby="export-guide">
+<h2 id="export-guide">后台导出与上传教程</h2>
+<ol>
+<li><strong>打开官方后台</strong>　点击账号卡片的“打开官方后台”，在本机浏览器登录抖音创作者中心。先核对首页账号名称及抖音号，多个卡片打开的是同一官方网站，需要自行确认当前登录账号。</li>
+<li><strong>进入数据中心</strong>　在左侧菜单点击“数据中心”，找到“作品数据”和“粉丝数据”。</li>
+<li><strong>选择统计日期</strong>　优先导出本月1日至昨日，再单独导出上月完整数据供对比。若后台只能选择近7日或近30日，请保留实际日期，系统只按报表覆盖范围展示。</li>
+<li><strong>下载原始文件</strong>　点击对应区域右上方“导出数据”。作品数据可下载《数据表现_短视频全量指标.xlsx》。粉丝数据区域有独立导出按钮。Safari弹出下载提示时选择“允许”，文件保存在电脑的“下载”文件夹。</li>
+<li><strong>回到本页上传</strong>　选择对应账号卡片。逐日播放、点赞、评论、分享与投稿量选择“账号概览”；粉丝报表选择“粉丝数据”；单条作品明细选择“作品数据”。保留原文件及表头，选择文件、确认账号后点击“上传报表”。</li>
+<li><strong>查看读取结果</strong>　绿色表示读取成功，黄色表示待核对，红色会显示具体问题。缺少日期或不支持的表头会提示原因。当天上传状态和历史记录可随时查看。</li>
+</ol>
+<p class="muted">当前已适配“短视频全量指标”的逐日内容报表。粉丝与单条作品的新表头需要用真实文件适配。后台页面标注的数据更新时间为准，导出前确认昨日数据已更新。</p>
+</section>
 <script src="/ops-sync.js"></script>
 </main>
 </html>
