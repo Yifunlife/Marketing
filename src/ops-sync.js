@@ -31,14 +31,16 @@
    document.querySelector('#ads').textContent=data.ad_automatic?'广告费用继续通过已配置的广告API同步。':'广告费用使用独立的广告API接入。';
    for(const account of data.cards.filter(value=>value.platform==='抖音')){
     const box=el('section',undefined,'card');
-    box.append(el('h2','抖音 · '+account.label),el('p','本机登录 · 报表上传','status'));
+    const heading=el('div',undefined,'account-head');
+    heading.append(el('h2','抖音 · '+account.label));
+    box.append(heading);
     const details=el('dl');
     for(const [label,value] of [['最近采集',stamp(account.last_at)],['数据截至',account.data_end||'尚未核实']])details.append(el('dt',label),el('dd',value));
     box.append(details);
-    const open=el('a','打开抖音官方后台','button');
+    const open=el('a','打开官方后台 ↗','button');
     open.href='https://creator.douyin.com/creator-micro/home';
     open.target='_blank';open.rel='noopener noreferrer';
-    box.append(open);
+    heading.append(open);
     const form=el('form'),kind=el('select'),file=el('input');
     kind.setAttribute('aria-label',account.label+'报表类型');
     for(const [value,label] of Object.entries(kinds)){
@@ -65,7 +67,9 @@
      }catch(error){message.textContent=error.message;}
      finally{button.disabled=!data.can_operate;}
     };
-    box.append(form,el('p','支持CSV、XLSX、XLS，单份小于20MB。报表核对后再更新指标。','muted'),el('h3','上传记录'),list);
+    const history=el('details');
+    history.append(el('summary','上传记录'),list);
+    box.append(form,el('p','CSV / XLSX / XLS · 单份小于20MB · 上传后待核对','file-hint'),history);
     cards.append(box);
     reports(account.id,list).catch(error=>{list.textContent=error.message;});
    }
