@@ -3,8 +3,15 @@ async function creatorCollectNotes(page,env,target,accountId,now){
  try{
   await page.goto('https://creator.xiaohongshu.com/statistics/data-analysis',{waitUntil:'domcontentloaded',timeout:20000});
   await page.waitForFunction(()=>document.querySelectorAll('table tbody tr').length>0,{timeout:10000});
-  const raw=await page.evaluate(()=>Array.from(document.querySelectorAll('table')).map(table=>({headers:Array.from(table.querySelectorAll('thead th')).map(e=>e.innerText.trim()),rows:Array.from(table.querySelectorAll('tbody tr')).map(tr=>({cells:Array.from(tr.querySelectorAll('td')).map(td=>td.innerText.trim()),cover:(()=>{const cell=tr.querySelector('td');if(!cell)return null;const img=cell.querySelector('img');const direct=img?.currentSrc||img?.getAttribute('data-src')||img?.src;if(direct&&!direct.startsWith('data:'))return direct;for(const e of [cell,...cell.querySelectorAll('*')]){const bg=getComputedStyle(e).backgroundImage;const m=bg.match(/^url\(["']?(.*?)["']?\)$/);if(m&&m[1])return m[1];}return null;})(),url:Array.from(tr.querySelectorAll('a[href]')).map(a=>a.href).find(h=>h.includes('/explore/'))||null}))})));
+  // Each row must enter the viewport: the official page lazy-loads covers.
+  const handles=await page.$$('table tbody tr');
+  for(const row of handles){await row.evaluate(el=>el.scrollIntoView({block:'center'}));await page.waitForNetworkIdle({idleTime:300,timeout:2500}).catch(()=>{});}
+  await page.evaluate(()=>window.scrollTo(0,0));
+  const raw=await page.evaluate(()=>Array.from(document.querySelectorAll('table')).map(table=>({headers:Array.from(table.querySelectorAll('thead th')).map(e=>e.innerText.trim()),rows:Array.from(table.querySelectorAll('tbody tr')).map(tr=>({cells:Array.from(tr.querySelectorAll('td')).map(td=>td.innerText.trim()),cover:(()=>{const cell=tr.querySelector('td');if(!cell)return null;const img=cell.querySelector('img');const direct=img?.currentSrc||img?.getAttribute('data-src')||img?.getAttribute('data-original')||img?.src;if(direct&&!direct.startsWith('data:'))return direct;for(const e of [cell,...cell.querySelectorAll('*')]){const bg=getComputedStyle(e).backgroundImage;const m=bg.match(/^url\(["']?(.*?)["']?\)$/);if(m&&m[1])return m[1];}return null;})(),url:Array.from(tr.querySelectorAll('a[href]')).map(a=>a.href).find(h=>h.includes('/explore/'))||null}))})));
   const snapshot=creatorNotesSnapshot(raw,now);
+  const old=await xget('creator:notes:'+accountId,env);
+  for(const item of snapshot.items){if(!item.cover_url){const prior=old?.items?.find(p=>p.title===item.title&&p.published_at===item.published_at);if(prior?.cover_url)item.cover_url=prior.cover_url;}}
+  snapshot.cover_count=snapshot.items.filter(i=>i.cover_url).length;
   const range=await page.evaluate(()=>Array.from(document.querySelectorAll('input')).map(e=>e.value).filter(v=>/^\d{4}-\d{2}-\d{2}$/.test(v)).slice(0,2));
   snapshot.scope='内容分析页；'+(range.length===2?'笔记发布时间筛选 '+range.join(' 至 ')+'；':'')+'本页已读取'+snapshot.count+'条，按累计观看量排序。仅覆盖当前页与筛选范围，不代表全账号或每日新增排名。';
   const object='creator/'+accountId+'/notes/'+now+'.json';
