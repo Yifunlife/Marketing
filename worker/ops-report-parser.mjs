@@ -46,7 +46,7 @@ export async function opsWorkbookRows(buffer,extension){
  return rows;
 }
 export function opsParseDaily(rows,kind,today){
- const aliases={投稿量:'posts',总播放量:'plays',总点赞量:'likes',总评论量:'comments',总分享量:'shares',净增粉丝:'net_followers',粉丝净增:'net_followers',新增粉丝:'new_followers',取消关注:'lost_followers',流失粉丝:'lost_followers'};
+ const aliases={'5秒完播率':'five_second_rate','2秒跳出率':'two_second_exit_rate',封面点击率:'cover_click_rate',平均播放时长:'average_watch_seconds',投稿量:'posts',总播放量:'plays',总点赞量:'likes',总评论量:'comments',总分享量:'shares',净增粉丝:'net_followers',粉丝净增:'net_followers',新增粉丝:'new_followers',取消关注:'lost_followers',流失粉丝:'lost_followers'};
  const headerIndex=rows.findIndex(row=>String(row[0]||'').replace(/^\uFEFF/,'').trim()==='日期');
  if(headerIndex<0)throw Error('未找到逐日“日期”表头，请上传数据中心导出的原始报表。');
  const header=rows[headerIndex].map(value=>String(value).trim()),columns=[];
@@ -64,8 +64,15 @@ export function opsParseDaily(rows,kind,today){
   const metrics={};
   for(const [index,key] of columns){
    const raw=String(row[index]??'').replace(/,/g,'').trim(),value=Number(raw);
-   if(!raw||!Number.isSafeInteger(value)||(key!=='net_followers'&&value<0))throw Error(date+' 的指标为空或格式异常，未覆盖已有数据。');
-   metrics[key]=value;
+   if(key.endsWith('_rate')||key==='average_watch_seconds'){
+    const pattern=key.endsWith('_rate')?/^(\d+(?:\.\d+)?)%$/:/^(\d+(?:\.\d+)?)(?:s|秒)?$/;
+    const matched=raw.match(pattern),number=matched?Number(matched[1]):NaN;
+    if(!Number.isFinite(number)||(key.endsWith('_rate')&&number>100))throw Error(date+' 的比率或时长格式不正确。');
+    metrics[key]=number;
+   }else{
+    if(!raw||!Number.isSafeInteger(value)||(key!=='net_followers'&&value<0))throw Error(date+' 的指标为空或格式异常，未覆盖已有数据。');
+    metrics[key]=value;
+   }
   }
   if(metrics.net_followers===undefined&&metrics.new_followers!==undefined&&metrics.lost_followers!==undefined)metrics.net_followers=metrics.new_followers-metrics.lost_followers;
   result.push({date,metrics});

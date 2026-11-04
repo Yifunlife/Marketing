@@ -19,6 +19,11 @@ async function opsSyncApi(req,env,user){
  }
  return xjson({cards,can_operate:opsSyncAllowed(user,true),ad_automatic:(await xget('oe:schedule',env))?.enabled===true});
  }
+ if(id==='snapshots'&&req.method==='GET'){
+  const accounts={};
+  for(const key of ['garden','factory','toy','supertada'])accounts[key]=await opsReportSnapshot(key,env,await xget('dy:creator:'+key,env));
+  return xjson({accounts});
+ }
  const target=Object.prototype.hasOwnProperty.call(opsSyncTargets,id)?opsSyncTargets[id]:null;if(!target)return xjson({error:'未知平台账号'},404);
  if(action==='reports'&&target.key)return opsReportsApi(req,env,user,target);
  if(!['start','check','collect','live','preview','control','screen','input','diagnostic'].includes(action))return xjson({error:'操作不存在'},404);

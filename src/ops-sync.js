@@ -83,6 +83,7 @@
      try{
       const result=await request('/api/ops-sync/'+account.id+'/reports?kind='+kind.value,{method:'POST',headers:{'Content-Type':'application/octet-stream','X-File-Name':encodeURIComponent(selected.name)},body:selected});
       message.textContent=result.message;file.value='';confirm.checked=false;
+      if(result.status==='imported'&&window.parent!==window)window.parent.postMessage({type:'douyin-reports-updated'},location.origin);
       await reports(account.id,list,daily);
      }catch(error){message.textContent=error.message;}
      finally{button.disabled=!data.can_operate;}
