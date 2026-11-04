@@ -70,7 +70,7 @@ export function opsParseDaily(rows,kind,today){
     if(!Number.isFinite(number)||(key.endsWith('_rate')&&number>100))throw Error(date+' 的比率或时长格式不正确。');
     metrics[key]=number;
    }else{
-    if(!raw||!Number.isSafeInteger(value)||(key!=='net_followers'&&value<0))throw Error(date+' 的指标为空或格式异常，未覆盖已有数据。');
+    if(!raw||!Number.isSafeInteger(value)||(!['net_followers','likes','comments','shares'].includes(key)&&value<0))throw Error(date+' 的指标为空或格式异常，未覆盖已有数据。');
     metrics[key]=value;
    }
   }
