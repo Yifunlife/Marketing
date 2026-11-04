@@ -13,3 +13,5 @@ test('ranking shortens only display text, escapes full copy and preserves missin
 test('management actions show evidence and owner, without attributing causes or customers',()=>{const c=setup(),html=c.accountManagement(['抖音','工厂号'],{data_end:'2026-11-03',month:{posts:2,net_followers:-3},top:{items:[{title:'医院场景',plays:100}]}});assert(html.includes('检查粉丝流失'));assert(html.includes('本月净增 -3'));assert(html.includes('潘家庆'));assert(html.includes('历史累计领先不代表昨日领先'));assert(html.includes('归因'));assert(!html.includes('自动增加预算'));});
 
 test('daily decline alert needs consecutive days and states observation without causation',()=>{const c=setup(),data={daily:[{date:'2026-11-02',plays:457},{date:'2026-11-03',plays:244}]};assert.match(c.accountManagement(['抖音','工厂号'],data),/244，较前一日 ↓46.6%/);data.daily[0].date='2026-11-01';assert(!c.accountManagement(['抖音','工厂号'],data).includes('244，较前一日'));});
+
+test('CTR absolute change is labelled in percentage points',()=>{const c=setup();assert.match(c.metricChange(8,4,{unit:'个百分点'}),/↑ 100.0% · 增加 4个百分点/);});

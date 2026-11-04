@@ -124,6 +124,8 @@ function accountManagement(a,data){
  if(top)add('选题复盘候选','本文件累计播放第1：'+shortWorkTitle(top.title)+'（'+Number(top.plays).toLocaleString('zh-CN')+'）','复盘开头、产品卖点与客户留言，提炼可测试的下一条选题；历史累计领先不代表昨日领先。');
  const ad=accountAdReport(a)?.periods?.month;
  if(ad?.status==='ok'&&Number.isFinite(ad.metrics?.fee)&&ad.metrics.fee>0)add('检查获客质量','本月广告花费 ¥'+ad.metrics.fee.toFixed(2),'按账号关联咨询、有效客户与成交；补齐逐条广告明细后再决定素材与预算。');
+ const adComparison=comparableAdPeriods(accountAdReport(a));
+ if(adComparison){const [current,prior]=adComparison.map(p=>p.metrics);if([current?.fee,current?.click,prior?.fee,prior?.click].every(Number.isFinite)&&current.click>0&&prior.click>0&&prior.fee>0){const change=((current.fee/current.click)/(prior.fee/prior.click)-1)*100;if(change>=20)add('排查点击成本上升','单次点击成本较上月同期 ↑'+change.toFixed(1)+'%','按素材、人群和地区检查点击率及点击成本，再核对咨询质量；花费下降不等于效率提高。');}}
  if(!tasks.length)add('检查内容效果',Number.isFinite(net)?'本月净增 '+net+' 人':'当前缺少完整同期对比','对照内容表现、客户需求和发布排期安排复盘；补齐同口径数据后评估变化。');
  const number=n=>Number.isFinite(n)?n.toLocaleString('zh-CN'):'—';
  const money=ad?.status==='ok'&&Number.isFinite(ad.metrics?.fee)?'¥'+ad.metrics.fee.toLocaleString('zh-CN',{maximumFractionDigits:2}):'—';
@@ -184,10 +186,10 @@ function comparableAdPeriods(report){
  if(current.end.slice(8)!==previous.end.slice(8)||current.end<current.start||previous.end<previous.start)return null;
  return [current,previous];
 }
-function metricChange(current,previous,{money=false,cost=false,label='较上月同期'}={}){
+function metricChange(current,previous,{money=false,cost=false,unit='',label='较上月同期'}={}){
  if(!Number.isFinite(current)||!Number.isFinite(previous))return '<span class="metric-change">— 暂无同口径对比</span>';
  const delta=current-previous,arrow=delta>0?'↑':delta<0?'↓':'→',color=cost?(delta<0?' improved':delta>0?' worsened':''):'';
- const difference=(money?'¥':'')+Math.abs(delta).toLocaleString('zh-CN',{maximumFractionDigits:2});
+ const difference=(money?'¥':'')+Math.abs(delta).toLocaleString('zh-CN',{maximumFractionDigits:2})+unit;
  return '<span class="metric-change'+color+'">'+label+' '+arrow+' '+(previous===0?(delta===0?'持平':'上期为0，新增 '+difference):Math.abs(delta/previous*100).toFixed(1)+'% · '+(delta===0?'持平':(delta>0?'增加 ':'减少 ')+difference))+'</span>';
 }
 function adEfficiency(report){
@@ -197,7 +199,7 @@ function adEfficiency(report){
  const cpc=m=>Number.isFinite(m?.fee)&&Number.isFinite(m?.click)&&m.click>0?m.fee/m.click:null;
  const ctr=m=>Number.isFinite(m?.impression)&&m.impression>0&&Number.isFinite(m?.click)?m.click/m.impression*100:null;
  const fields=[['广告花费',metrics.fee,prior?.fee,true,false],['单次点击成本',cpc(metrics),cpc(prior),true,true],['点击率',ctr(metrics),ctr(prior),false,false]];
- return '<section class="panel xhs-section"><h3>广告效率与成本变化</h3><small>统计范围 '+displayText(period.start)+' 至 '+displayText(period.end)+(period.stale?' · 原数据保留，待更新':'')+'</small><div class="cost-grid">'+fields.map(([title,value,old,money,cost])=>'<div class="cost-metric"><small>'+title+'</small><strong>'+(Number.isFinite(value)?(money?'¥':'')+value.toLocaleString('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:2})+(title==='点击率'?'%':''):'—')+'</strong>'+metricChange(value,old,{money,cost})+'</div>').join('')+'</div><p class="muted">展现 '+(metrics.impression??'—')+' · 点击 '+(metrics.click??'—')+'。花费上涨只表示支出增加；点击成本下降仍需结合客户质量判断。点击率变化按相对百分比计算。</p><details><summary>对比口径与数据缺口</summary><p>'+(comparison?'本期 '+comparison[0].start+' 至 '+comparison[0].end+'；上期 '+comparison[1].start+' 至 '+comparison[1].end+'。':'未取得完整、等天数且未过期的上月同期报表，暂不计算涨跌。')+'</p><p>当前为账号汇总；逐条视频花费与点击率需要素材级报表及作品ID关联。有效客户成本与成交回报须先核实CRM来源，不用点击或私信替代。</p></details></section>';
+ return '<section class="panel xhs-section"><h3>广告效率与成本变化</h3><small>统计范围 '+displayText(period.start)+' 至 '+displayText(period.end)+(period.stale?' · 原数据保留，待更新':'')+'</small><div class="cost-grid">'+fields.map(([title,value,old,money,cost])=>'<div class="cost-metric"><small>'+title+'</small><strong>'+(Number.isFinite(value)?(money?'¥':'')+value.toLocaleString('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:2})+(title==='点击率'?'%':''):'—')+'</strong>'+metricChange(value,old,{money,cost,unit:title==='点击率'?'个百分点':''})+'</div>').join('')+'</div><p class="muted">展现 '+(metrics.impression??'—')+' · 点击 '+(metrics.click??'—')+'。花费上涨只表示支出增加；点击成本下降仍需结合客户质量判断。点击率变化按相对百分比计算。</p><details><summary>对比口径与数据缺口</summary><p>'+(comparison?'本期 '+comparison[0].start+' 至 '+comparison[0].end+'；上期 '+comparison[1].start+' 至 '+comparison[1].end+'。':'未取得完整、等天数且未过期的上月同期报表，暂不计算涨跌。')+'</p><p>当前为账号汇总；逐条视频花费与点击率需要素材级报表及作品ID关联。有效客户成本与成交回报须先核实CRM来源，不用点击或私信替代。</p></details></section>';
 }
 function douyinAccountDetail(a){
  const r=accountAdReport(a),data=douyinData(a),fmt=n=>Number.isFinite(n)?n.toLocaleString('zh-CN'):'—',fee=p=>p?.status==='ok'&&Number.isFinite(Number(p.metrics?.fee))?'¥'+Number(p.metrics.fee).toLocaleString('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:2})+(p.stale?'（待更新）':''):'—';
