@@ -2,6 +2,8 @@ const oeGardenId='1870123154441292';
 function oeRanges(now=Date.now()){
  const today=new Date(now+8*3600000).toISOString().slice(0,10),end=new Date(Date.parse(today+'T00:00:00Z')-86400000).toISOString().slice(0,10),year=today.slice(0,4),month=today.slice(0,7);
  const ranges={yesterday:{start:end,end},month:{start:month+'-01',end},year:{start:year+'-01-01',end}};
+ const priorMonth=new Date(Date.parse(today+'T00:00:00Z'));priorMonth.setUTCDate(1);priorMonth.setUTCMonth(priorMonth.getUTCMonth()-1);const priorStart=priorMonth.toISOString().slice(0,10),priorLast=new Date(Date.UTC(priorMonth.getUTCFullYear(),priorMonth.getUTCMonth()+1,0)).getUTCDate(),days=Number(today.slice(8))-1;
+ ranges.previous={start:priorStart,end:new Date(Date.UTC(priorMonth.getUTCFullYear(),priorMonth.getUTCMonth(),Math.min(days,priorLast))).toISOString().slice(0,10)};
  const history=[];for(let m=1;m<=Number(today.slice(5,7));m++){const start=year+'-'+String(m).padStart(2,'0')+'-01',last=new Date(Date.UTC(Number(year),m,0)).toISOString().slice(0,10);if(start<=end)history.push({month:start.slice(0,7),start,end:last<end?last:end});}
  return {today,end,year,month,ranges,history};
 }

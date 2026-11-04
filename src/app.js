@@ -93,32 +93,36 @@ function xhsStyle(){return `<style>
 .management-review ul{padding-left:18px;margin:6px 0}
 .management-review li{margin:5px 0;line-height:1.6}
 .management-overview{display:flex;gap:18px;flex-wrap:wrap;padding:10px 14px;background:#edf3fa;border-radius:8px;margin:12px 0;font-size:13px}
+.review-heading{display:flex;justify-content:space-between;align-items:center;gap:10px}.review-heading span{font-size:12px;color:#62758c}.review-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:12px 0}.review-number{padding:11px 13px;background:white;border:1px solid #e3eaf3;border-radius:9px}.review-number small{display:block;color:#6d7f96}.review-number strong{display:block;font-size:24px;color:#21467f;margin:3px 0}.review-number em{font-size:11px;font-style:normal;color:#75859a}.review-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.review-action{background:white;border:1px solid #e1e8f2;border-radius:9px;padding:12px}.review-action .action-top{display:flex;justify-content:space-between;gap:8px;align-items:center}.review-action .action-top strong{font-size:14px}.action-tag{font-size:11px;color:#43648c;background:#edf3fb;border-radius:5px;padding:3px 6px;white-space:nowrap}.review-action.attention{border-left:3px solid #ca942b}.review-action.opportunity{border-left:3px solid #388e84}.review-action .action-evidence{font-size:12px;color:#38587c;margin:8px 0;line-height:1.5}.review-action .action-do{font-size:12px;color:#65758a;line-height:1.65;margin:0}.review-action footer{font-size:11px;color:#7b8a9c;border-top:1px solid #edf1f6;margin-top:9px;padding-top:7px}.management-review>details{font-size:12px;color:#6c7c91;margin-top:10px}@media(max-width:750px){.review-actions{grid-template-columns:1fr}.review-summary{gap:5px}.review-number{padding:8px}.review-number strong{font-size:19px}}
+.ops-actions{width:100%;font-size:13px}.ops-actions td{vertical-align:top;padding:10px!important;white-space:normal}.ops-actions th{padding:8px 10px!important}
+.cost-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:8px;margin:10px 0}.cost-metric{border:1px solid #e1e8f2;border-radius:8px;padding:12px}.cost-metric strong{display:block;font-size:22px;margin:5px 0}.metric-change{font-size:12px;color:#65758a}.metric-change.improved{color:#168064}.metric-change.worsened{color:#b64737}
+.work-identity{display:flex;gap:9px;align-items:flex-start;min-width:235px;max-width:340px}.work-cover{width:48px;height:64px;flex:none;border-radius:5px;object-fit:cover;background:#edf1f6}.work-cover.empty{display:flex;align-items:center;text-align:center;font-size:10px;color:#77879a}.work-title{font-weight:600;line-height:1.5}.work-identity details{font-size:12px;max-width:270px}.work-identity summary{color:#64758b;cursor:pointer}.work-identity details p{white-space:normal;overflow-wrap:anywhere}.ranking-table td{vertical-align:top!important;padding:10px!important}.ranking-table th{padding:9px 10px!important}
 .management-next{font-size:12px;color:#526a86;padding-top:8px;border-top:1px solid #edf1f6}
 @media(max-width:700px){#growth-agent .xhs-view .platforms{grid-template-columns:1fr}#growth-agent .xhs-view .panel{padding:13px}#growth-agent .xhs-view h2{font-size:21px}#growth-agent .xhs-view .grid{grid-template-columns:repeat(2,minmax(0,1fr))}.xhs-card-stats{gap:14px}}
 </style>`;}
+function displayText(value){return String(value??'').replace(/[&<>"']/g,c=>'&#'+c.charCodeAt(0)+';');}
+function shortWorkTitle(title){const text=String(title||'未命名作品').replace(/\s+/g,' ').trim();return Array.from(text).slice(0,22).join('')+(Array.from(text).length>22?'…':'');}
 function accountManagement(a,data){
- const observations=[],tasks=[],month=data?.month,prior=data?.previous;
- const yesterday=new Date(Date.parse(new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Shanghai'}))-86400000).toISOString().slice(0,10);
- if(!data)tasks.push('补齐账号报表，确认负责人和数据归属。');
- else{
-  if(data.data_end&&data.data_end<yesterday)tasks.push('报表尚未覆盖昨日，先补齐最新日期再判断近期变化。');
-  const net=month?.net_followers;
-  if(Number.isFinite(net))observations.push('本月净增粉丝 '+net+'，'+(net<0?'流失多于新增，需结合吸粉和脱粉明细复盘。':net===0?'新增与流失相抵。':'粉丝规模净增长。'));
-  else tasks.push('本月增粉尚未取得完整数据，补粉丝报表。');
-  if(Number.isFinite(month?.posts)){
-   observations.push('本月已发布 '+month.posts+' 条；昨日发布 '+(data.yesterday?.posts??'未取得')+' 条。');
-   if(month.posts===0)tasks.push('本月暂无发布记录，请负责人核对排期及报表覆盖。');
-  }else tasks.push('补齐当月逐日内容数据，核对发布节奏。');
-  const field=a[0]==='小红书'?'views':'plays';
-  if(Number.isFinite(month?.[field])&&Number.isFinite(prior?.[field])&&prior[field]>0){
-   const change=(month[field]-prior[field])/prior[field]*100;
-   observations.push('本月'+(field==='views'?'观看':'播放')+'较上月同期'+(change>=0?'上升 ':'下降 ')+Math.abs(change).toFixed(1)+'%，统计范围按两期同口径报表。');
-  }
+ const tasks=[],month=data?.month,prior=data?.previous,owner=displayText(accountOwner(a)),add=(label,evidence,action)=>tasks.push([label,evidence,action]);
+ const today=new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Shanghai'}),yesterday=new Date(Date.parse(today)-86400000).toISOString().slice(0,10);
+ if(!data||!data.data_end||data.data_end<yesterday)add('先补数据',data?.data_end?'报表截至 '+data.data_end:'尚无已核实运营报表','补齐昨日内容与粉丝报表，再判断近期升降。');
+ const net=month?.net_followers;
+ if(Number.isFinite(net)&&net<0)add('检查粉丝流失','本月净增 '+net+' 人','对照脱粉日期、对应作品和评论反馈，核查内容与目标客户是否匹配。');
+ if(month?.posts===0)add('核对发布排期','本月已核实发布 0 条','核对待发布素材和排期；确认是否漏报后安排内容。');
+ const field=a[0]==='小红书'?'views':'plays';
+ if(Number.isFinite(month?.[field])&&Number.isFinite(prior?.[field])&&prior[field]>0){
+ const delta=(month[field]-prior[field])/prior[field]*100;
+ add(delta<0?'复盘流量下降':'复盘增长内容','本月'+(field==='views'?'观看':'播放')+'较上月同期 '+(delta>0?'↑':delta<0?'↓':'→')+Math.abs(delta).toFixed(1)+'%','对照两期发布数量、题材与广告投放记录，定位变化来源，先核查再调整。');
  }
+ const top=data?.top?.items?.[0];
+ if(top)add('选题复盘候选','本文件累计播放第1：'+shortWorkTitle(top.title)+'（'+Number(top.plays).toLocaleString('zh-CN')+'）','复盘开头、产品卖点与客户留言，提炼可测试的下一条选题；历史累计领先不代表昨日领先。');
  const ad=accountAdReport(a)?.periods?.month;
- if(ad?.status==='ok'&&Number(ad.metrics?.fee)>0)tasks.push('本月广告消耗 ¥'+Number(ad.metrics.fee).toFixed(2)+'，需核对账号来源客户和成交后再评价投放回报。');
- if(!observations.length)observations.push('当前数据不足以判断运营升降，先完成对应报表接入。');
- return '<section class="management-review"><h3>管理关注 · '+accountOwner(a)+'</h3><ul>'+observations.slice(0,3).map(text=>'<li>'+text+'</li>').join('')+'</ul>'+(tasks.length?'<div class="management-next"><strong>下一步</strong><ul>'+tasks.slice(0,3).map(text=>'<li>'+text+'</li>').join('')+'</ul></div>':'')+'</section>';
+ if(ad?.status==='ok'&&Number.isFinite(ad.metrics?.fee)&&ad.metrics.fee>0)add('检查获客质量','本月广告花费 ¥'+ad.metrics.fee.toFixed(2),'按账号关联咨询、有效客户与成交；补齐逐条广告明细后再决定素材与预算。');
+ if(!tasks.length)add('检查内容效果',Number.isFinite(net)?'本月净增 '+net+' 人':'当前缺少完整同期对比','对照内容表现、客户需求和发布排期安排复盘；补齐同口径数据后评估变化。');
+ const number=n=>Number.isFinite(n)?n.toLocaleString('zh-CN'):'—';
+ const money=ad?.status==='ok'&&Number.isFinite(ad.metrics?.fee)?'¥'+ad.metrics.fee.toLocaleString('zh-CN',{maximumFractionDigits:2}):'—';
+ return '<section class="management-review"><div class="review-heading"><h3>运营诊断与行动</h3><span>'+owner+' · '+tasks.length+' 项关注</span></div><div class="review-summary"><div class="review-number"><small>本月净增粉丝</small><strong>'+number(net)+'</strong><em>新增关注 − 取消关注</em></div><div class="review-number"><small>本月内容产出</small><strong>'+number(month?.posts)+'</strong><em>已核实发布数量</em></div><div class="review-number"><small>本月广告花费</small><strong>'+money+'</strong><em>账号广告报表 · 以广告区日期为准</em></div></div><div class="review-actions">'+tasks.map(([label,evidence,action])=>'<article class="review-action '+(label.includes('复盘候选')||label==='复盘增长内容'?'opportunity':'attention')+'"><div class="action-top"><strong>'+displayText(label)+'</strong><span class="action-tag">'+(label==='先补数据'?'数据待补':'待复盘')+'</span></div><p class="action-evidence">'+displayText(evidence)+'</p><p class="action-do">'+displayText(action)+'</p><footer>负责人 · '+owner+'　|　建议待验证</footer></article>').join('')+'</div><details><summary>分析依据与待补链路</summary><p>建议按已有报表规则生成，暂未确认变化原因。账号增长 → 单条内容 → 广告效率 → 客户质量 → 成交；客户与成交尚未完成本账号归因核实，不用私信次数代替有效客户。</p><p>作品ID、封面、逐日作品表现与逐条广告明细按实际接入情况展示；缺少关联时不推断视频带客或成交回报。</p></details></section>';
+
 }
 function platformManagement(rows){
  const ready=rows.filter(({a})=>a[0]==='抖音'?douyinData(a):creatorFor(a)).length;
@@ -162,23 +166,38 @@ function chartAxes(days,ceiling){
  return [0,1,2,3,4].map(index=>{const value=ceiling*index/4,y=130-index/4*110;return '<line x1="48" x2="592" y1="'+y+'" y2="'+y+'" stroke="#e1e7f0"/><text x="40" y="'+(y+4)+'" text-anchor="end" fill="#6e8095" font-size="11">'+value.toLocaleString('zh-CN')+'</text>';}).join('')+'<text x="48" y="154" fill="#6e8095" font-size="11">'+days[0].date+'</text><text x="592" y="154" text-anchor="end" fill="#6e8095" font-size="11">'+days.at(-1).date+'</text>';
 }
 function contentRanking(data){
- if(!data?.top?.items?.length)return '<section class="panel xhs-section"><h3>视频效果前10名</h3><p class="muted">等待单条作品明细。上传“作品列表导出”后显示已导出作品中的累计播放前10名。</p></section>';
- const fmt=value=>Number.isFinite(value)?value.toLocaleString('zh-CN'):'—';
- const esc=value=>String(value??'').replace(/[&<>"']/g,c=>'&#'+c.charCodeAt(0)+';');
- return '<section class="panel xhs-section"><h3>视频效果前10名 · 累计播放</h3><p class="muted">快照 '+new Date(data.top.at).toLocaleString('zh-CN',{timeZone:'Asia/Shanghai'})+' · '+esc(data.top.scope)+'</p><div class="scroll"><table><thead><tr><th>排名 / 视频</th><th>发布时间</th><th>累计播放</th><th>点赞</th><th>评论</th><th>收藏</th><th>分享</th><th>涨粉</th><th>完播率</th></tr></thead><tbody>'+data.top.items.map((item,index)=>'<tr><td>'+(item.cover_url?'<img src="'+esc(item.cover_url)+'" alt="视频封面" loading="lazy" referrerpolicy="no-referrer" style="width:72px;height:96px;object-fit:cover;border-radius:6px;float:left;margin-right:8px">':'')+'<strong>#'+(index+1)+'</strong> '+(item.item_url?'<a href="'+esc(item.item_url)+'" target="_blank" rel="noopener noreferrer">'+esc(item.title.slice(0,80))+'</a>':esc(item.title.slice(0,80)))+'</td><td>'+esc(item.published_at)+'</td><td>'+fmt(item.plays)+'</td><td>'+fmt(item.likes)+'</td><td>'+fmt(item.comments)+'</td><td>'+fmt(item.collects)+'</td><td>'+fmt(item.shares)+'</td><td>'+fmt(item.followers)+'</td><td>'+(Number.isFinite(item.completion)?(item.completion*100).toFixed(1)+'%':'—')+'</td></tr>').join('')+'</tbody></table></div></section>';
+ if(!data?.top?.items?.length)return '<section class="panel xhs-section"><h3>视频效果前10名</h3><p class="muted">等待单条作品明细，接入后展示累计播放排名、短标题和已取得的真实封面。</p></section>';
+ const fmt=value=>Number.isFinite(value)?value.toLocaleString('zh-CN'):'—',esc=displayText;
+ return '<section class="panel xhs-section"><h3>视频效果前10名 · 累计播放</h3><p class="muted">快照 '+new Date(data.top.at).toLocaleString('zh-CN',{timeZone:'Asia/Shanghai'})+' · '+esc(data.top.scope)+'</p><small>先看高播放作品的选题与留资质量；累计排名不能代替每日新增排名。封面未取得时保留提示。</small><div class="scroll"><table class="ranking-table"><thead><tr><th>排名 / 视频</th><th>发布时间</th><th>累计播放</th><th>点赞</th><th>评论</th><th>收藏</th><th>分享</th><th>涨粉</th><th>完播率</th></tr></thead><tbody>'+data.top.items.map((item,index)=>'<tr><td><div class="work-identity">'+(item.cover_url?'<img class="work-cover" src="'+esc(item.cover_url)+'" alt="视频封面" loading="lazy" referrerpolicy="no-referrer">':'<span class="work-cover empty">封面<br>待补</span>')+'<div><div class="work-title">#'+(index+1)+' '+(item.item_url?'<a href="'+esc(item.item_url)+'" target="_blank" rel="noopener noreferrer">'+esc(shortWorkTitle(item.title))+'</a>':esc(shortWorkTitle(item.title)))+'</div><details><summary>完整文案</summary><p>'+esc(item.title)+'</p></details></div></div></td><td>'+esc(item.published_at)+'</td><td>'+fmt(item.plays)+'</td><td>'+fmt(item.likes)+'</td><td>'+fmt(item.comments)+'</td><td>'+fmt(item.collects)+'</td><td>'+fmt(item.shares)+'</td><td>'+fmt(item.followers)+'</td><td>'+(Number.isFinite(item.completion)?(item.completion*100).toFixed(1)+'%':'—')+'</td></tr>').join('')+'</tbody></table></div></section>';
+}
+function comparableAdPeriods(report){
+ const current=report?.periods?.month,previous=report?.periods?.previous;
+ if(![current,previous].every(p=>p?.status==='ok'&&!p.stale&&/^\d{4}-\d{2}-\d{2}$/.test(p.start)&&/^\d{4}-\d{2}-\d{2}$/.test(p.end)))return null;
+ const [y,m]=current.start.split('-').map(Number),expected=new Date(Date.UTC(y,m-2,1)).toISOString().slice(0,7);
+ if(current.start.slice(8)!=='01'||previous.start!==expected+'-01'||current.end.slice(0,7)!==current.start.slice(0,7)||previous.end.slice(0,7)!==expected)return null;
+ if(current.end.slice(8)!==previous.end.slice(8)||current.end<current.start||previous.end<previous.start)return null;
+ return [current,previous];
+}
+function metricChange(current,previous,{money=false,cost=false,label='较上月同期'}={}){
+ if(!Number.isFinite(current)||!Number.isFinite(previous))return '<span class="metric-change">— 暂无同口径对比</span>';
+ const delta=current-previous,arrow=delta>0?'↑':delta<0?'↓':'→',color=cost?(delta<0?' improved':delta>0?' worsened':''):'';
+ const difference=(money?'¥':'')+Math.abs(delta).toLocaleString('zh-CN',{maximumFractionDigits:2});
+ return '<span class="metric-change'+color+'">'+label+' '+arrow+' '+(previous===0?(delta===0?'持平':'上期为0，新增 '+difference):Math.abs(delta/previous*100).toFixed(1)+'% · '+(delta===0?'持平':(delta>0?'增加 ':'减少 ')+difference))+'</span>';
 }
 function adEfficiency(report){
  const period=report?.periods?.month,metrics=period?.metrics;
  if(period?.status!=='ok'||!metrics)return '';
- const rate=Number.isFinite(metrics.impression)&&metrics.impression>0&&Number.isFinite(metrics.click)?(metrics.click/metrics.impression*100).toFixed(2)+'%':'—';
- const cost=Number.isFinite(metrics.click)&&metrics.click>0&&Number.isFinite(metrics.fee)?'¥'+(metrics.fee/metrics.click).toFixed(2):'—';
- return '<p class="muted">本月广告展现 '+(metrics.impression??'—')+' · 点击 '+(metrics.click??'—')+' · 点击率 '+rate+' · 单次点击成本 '+cost+'</p><p class="muted">当前为账号汇总。逐条视频花费需接入素材级报表，并以作品ID关联。</p>';
+ const comparison=comparableAdPeriods(report),prior=comparison?.[1]?.metrics;
+ const cpc=m=>Number.isFinite(m?.fee)&&Number.isFinite(m?.click)&&m.click>0?m.fee/m.click:null;
+ const ctr=m=>Number.isFinite(m?.impression)&&m.impression>0&&Number.isFinite(m?.click)?m.click/m.impression*100:null;
+ const fields=[['广告花费',metrics.fee,prior?.fee,true,false],['单次点击成本',cpc(metrics),cpc(prior),true,true],['点击率',ctr(metrics),ctr(prior),false,false]];
+ return '<section class="panel xhs-section"><h3>广告效率与成本变化</h3><small>统计范围 '+displayText(period.start)+' 至 '+displayText(period.end)+(period.stale?' · 原数据保留，待更新':'')+'</small><div class="cost-grid">'+fields.map(([title,value,old,money,cost])=>'<div class="cost-metric"><small>'+title+'</small><strong>'+(Number.isFinite(value)?(money?'¥':'')+value.toLocaleString('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:2})+(title==='点击率'?'%':''):'—')+'</strong>'+metricChange(value,old,{money,cost})+'</div>').join('')+'</div><p class="muted">展现 '+(metrics.impression??'—')+' · 点击 '+(metrics.click??'—')+'。花费上涨只表示支出增加；点击成本下降仍需结合客户质量判断。点击率变化按相对百分比计算。</p><details><summary>对比口径与数据缺口</summary><p>'+(comparison?'本期 '+comparison[0].start+' 至 '+comparison[0].end+'；上期 '+comparison[1].start+' 至 '+comparison[1].end+'。':'未取得完整、等天数且未过期的上月同期报表，暂不计算涨跌。')+'</p><p>当前为账号汇总；逐条视频花费与点击率需要素材级报表及作品ID关联。有效客户成本与成交回报须先核实CRM来源，不用点击或私信替代。</p></details></section>';
 }
 function douyinAccountDetail(a){
  const r=accountAdReport(a),data=douyinData(a),fmt=n=>Number.isFinite(n)?n.toLocaleString('zh-CN'):'—',fee=p=>p?.status==='ok'&&Number.isFinite(Number(p.metrics?.fee))?'¥'+Number(p.metrics.fee).toLocaleString('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:2})+(p.stale?'（待更新）':''):'—';
  return '<div class="xhs-view">'+xhsStyle()+'<div class="panel"><button data-month-back>← 返回账号列表</button><small style="display:block;margin-top:8px">抖音 / '+a[1]+'</small><h2>'+a[1]+'</h2><p>内容负责人 · '+accountOwner(a)+'</p><p class="muted">'+(data?.at?'运营数据读取于 '+new Date(data.at).toLocaleString('zh-CN',{timeZone:'Asia/Shanghai'})+(data.daily?'；官方报表截至 '+data.data_end+'。':'；目前仅总粉丝已核实。'):'该账号运营数据尚未核实。')+'</p><details><summary>数据来源与统计口径</summary><p>运营数据来自官方报表与网页快照；广告费用来自官方API；客户与成交按CRM账号归属核实后展示。</p></details><a href="/ops-sync">前往报表上传 →</a></div>'+accountManagement(a,data)+
  '<section class="panel xhs-section"><h3>01 / 账号增长与产出</h3>'+cards([['总粉丝',fmt(data?.fans)],['本月净增粉丝',fmt(data?.month?.net_followers)],['昨日净增粉丝',fmt(data?.yesterday?.net_followers)],['本月发布',fmt(data?.month?.posts)],['昨日发布',fmt(data?.yesterday?.posts)]])+'<small>'+(data?.fans_date?'总粉丝截至 '+data.fans_date+'。':'总粉丝为读取时点快照。')+' 本月指标只汇总当月1日至昨日完整覆盖的数据，近30天不直接作为本月。</small></section>'+
- '<section class="panel xhs-section"><h3>02 / 账号内容表现</h3>'+cards([['播放量',fmt(data?.content?.metrics?.plays)],['曝光量','—'],['点赞',fmt(data?.content?.metrics?.likes)],['评论',fmt(data?.content?.metrics?.comments)],['收藏','—'],['分享',fmt(data?.content?.metrics?.shares)],['主页访客','—']])+(data?.content?'<p class="muted">统计范围 '+data.content.start+' 至 '+data.content.end+' · 官方逐日报表汇总</p>':'')+'<p class="muted">平台未提供的指标标为不支持；未读到的指标保持未取得，不称为纯自然流量。</p><details><summary>单条作品明细</summary><p>采集目标：作品 ID、标题、发布时间、播放、点赞、评论、收藏、分享；完播率、平均观看时长等按后台实际支持情况读取。当前尚未取得已核实的作品报表。</p></details></section>'+
+ '<section class="panel xhs-section"><h3>02 / 账号内容表现</h3>'+cards([['播放量',fmt(data?.content?.metrics?.plays)],['曝光量','—'],['点赞',fmt(data?.content?.metrics?.likes)],['评论',fmt(data?.content?.metrics?.comments)],['收藏','—'],['分享',fmt(data?.content?.metrics?.shares)],['主页访客','—']])+(data?.content?'<p class="muted">统计范围 '+data.content.start+' 至 '+data.content.end+' · 官方逐日报表汇总</p>':'')+'<p class="muted">平台未提供的指标标为不支持；未读到的指标保持未取得，不称为纯自然流量。</p><details><summary>单条作品明细</summary><p>采集目标：作品 ID、标题、发布时间、播放、点赞、评论、收藏、分享；完播率、平均观看时长等按后台实际支持情况读取。'+(data?.top?.items?.length?'已读取作品累计表现，见下方排行榜；逐日作品数据、作品ID与封面仍需补齐。':'当前尚未取得已核实的作品报表。')+'</p></details></section>'+
  douyinInsights(data)+contentRanking(data)+douyinDailyTable(data)+
  '<section class="panel xhs-section"><h3>03 / 广告投放</h3>'+cards([['昨日广告费',fee(r?.periods?.yesterday)],['本月广告费',fee(r?.periods?.month)],['年度广告费',fee(r?.periods?.year)]])+adEfficiency(r)+(r?'<p>官方 API · 数据截至 '+r.data_end+' · 更新于 '+new Date(r.checked_at).toLocaleString('zh-CN',{timeZone:'Asia/Shanghai'})+'</p><p class="muted">每日08:00同步，10:30补采；采集失败保留旧数据。</p>':'<p class="muted">该账号尚无已匹配的广告报表，其他账号广告费用不会并入。</p>')+(r?.history?.length?'<details><summary>月度广告支出</summary><table><thead><tr><th>月份</th><th>统计范围</th><th>广告费</th></tr></thead><tbody>'+r.history.map(h=>'<tr><td>'+h.month+'</td><td>'+h.start+' 至 '+h.end+'</td><td>'+fee(h)+'</td></tr>').join('')+'</tbody></table></details>':'')+'</section>'+
  '<section class="panel xhs-section"><h3>04 / 客户与成交</h3>'+cards([['有效客户','—'],['成交金额','—'],['有效客户成本','—'],['投入产出比','—']])+'<p class="muted">仅纳入 CRM 中已确认来自本抖音账号的客户与成交；来源未核实的不归入账号。广告转化次数、私信次数不等于有效客户。</p></section></div>';
