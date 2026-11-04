@@ -25,15 +25,17 @@
    const report=current.find(value=>value.report_kind===kind);
    const badge=el('span',label+' · '+(report?reportStatus(report.status):'今日未上传'),'daily-badge');
    badge.dataset.state=report?.status||'missing';
-   if(report)badge.title='上传于 '+stamp(report.uploaded_at);
+   if(report)badge.title='上传于 '+stamp(report.uploaded_at)+(report.review_message?' · '+report.review_message:'');
    badges.append(badge);
   }
   daily.append(badges);
+  for(const report of current.filter(value=>value.review_message))daily.append(el('p',report.review_message,'review-message'));
   list.replaceChildren();
   for(const report of data.reports){
    const item=el('li'),link=el('a',report.original_name);
    link.href='/api/ops-sync/'+id+'/reports?file='+encodeURIComponent(report.id);
    item.append(link,el('div',(kinds[report.report_kind]||'报表')+' · '+stamp(report.uploaded_at)+' · '+reportStatus(report.status),'muted'));
+   if(report.review_message)item.append(el('div',report.review_message,'review-message'));
    list.append(item);
   }
   if(!data.reports.length)list.append(el('li','尚未上传报表','muted'));
