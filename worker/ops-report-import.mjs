@@ -34,6 +34,8 @@ async function opsReportSnapshot(key,env,legacy){
  const end=rows.at(-1).metric_date,today=new Date(Date.now()+28800000).toISOString().slice(0,10),yesterday=new Date(Date.parse(today)-86400000).toISOString().slice(0,10),start=today.slice(0,7)+'-01';
  data.at=Math.max(...rows.map(row=>row.report_uploaded_at));data.data_end=end;
  data.daily=Array.from(dates,([date,metrics])=>({date,...metrics}));
+ const fanDay=data.daily.filter(day=>day.fans!==undefined).at(-1);
+ if(fanDay){data.fans=fanDay.fans;data.fans_date=fanDay.date;}
  data.month={};data.yesterday=dates.get(yesterday)||{};
  const last=yesterday>=start?yesterday:null;
  if(last)for(const metric of ['posts','plays','likes','comments','shares','net_followers']){

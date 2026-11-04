@@ -46,7 +46,7 @@ export async function opsWorkbookRows(buffer,extension){
  return rows;
 }
 export function opsParseDaily(rows,kind,today){
- const aliases={'5秒完播率':'five_second_rate','2秒跳出率':'two_second_exit_rate',封面点击率:'cover_click_rate',平均播放时长:'average_watch_seconds',投稿量:'posts',总播放量:'plays',总点赞量:'likes',总评论量:'comments',总分享量:'shares',净增粉丝:'net_followers',粉丝净增:'net_followers',新增粉丝:'new_followers',取消关注:'lost_followers',流失粉丝:'lost_followers'};
+ const aliases={总粉丝量:'fans',吸粉量:'new_followers',脱粉量:'lost_followers',回访粉丝量:'returning_followers','5秒完播率':'five_second_rate','2秒跳出率':'two_second_exit_rate',封面点击率:'cover_click_rate',平均播放时长:'average_watch_seconds',投稿量:'posts',总播放量:'plays',总点赞量:'likes',总评论量:'comments',总分享量:'shares',净增粉丝:'net_followers',粉丝净增:'net_followers',新增粉丝:'new_followers',取消关注:'lost_followers',流失粉丝:'lost_followers'};
  const headerIndex=rows.findIndex(row=>String(row[0]||'').replace(/^\uFEFF/,'').trim()==='日期');
  if(headerIndex<0)throw Error('未找到逐日“日期”表头，请上传数据中心导出的原始报表。');
  const header=rows[headerIndex].map(value=>String(value).trim()),columns=[];
@@ -74,6 +74,7 @@ export function opsParseDaily(rows,kind,today){
     metrics[key]=value;
    }
   }
+  if(metrics.net_followers!==undefined&&metrics.new_followers!==undefined&&metrics.lost_followers!==undefined&&metrics.net_followers!==metrics.new_followers-metrics.lost_followers)throw Error(date+' 的净增与吸粉、脱粉数据不一致。');
   if(metrics.net_followers===undefined&&metrics.new_followers!==undefined&&metrics.lost_followers!==undefined)metrics.net_followers=metrics.new_followers-metrics.lost_followers;
   result.push({date,metrics});
  }
