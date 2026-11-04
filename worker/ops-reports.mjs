@@ -9,7 +9,10 @@ async function opsReportsApi(req,env,user,target){
    return new Response(object.body,{headers:{...xhsHeaders,'Content-Type':row.content_type,'Content-Disposition':"attachment; filename*=UTF-8''"+encodeURIComponent(row.original_name),'X-Content-Type-Options':'nosniff','Cache-Control':'private, no-store'}});
   }
   const rows=await env.DB.prepare('SELECT id,report_kind,original_name,size_bytes,uploaded_at,status FROM creator_report_uploads WHERE account_key=? ORDER BY uploaded_at DESC LIMIT 30').bind(target.key).all();
-  return xjson({reports:rows.results||[]});
+  const now=Date.now(),day=new Date(now+8*3600000).toISOString().slice(0,10);
+  const start=Date.parse(day+'T00:00:00+08:00');
+  const today=await env.DB.prepare('SELECT report_kind,status,uploaded_at FROM (SELECT report_kind,status,uploaded_at,ROW_NUMBER() OVER (PARTITION BY report_kind ORDER BY uploaded_at DESC,id DESC) AS position FROM creator_report_uploads WHERE account_key=? AND uploaded_at>=? AND uploaded_at<?) WHERE position=1').bind(target.key,start,start+86400000).all();
+  return xjson({reports:rows.results||[],day,today:today.results||[]});
  }
  if(req.method!=='POST')return xjson({error:'方法不支持'},405);
  if(req.headers.get('Origin')!==url.origin)return xjson({error:'请从运营看板上传报表'},403);

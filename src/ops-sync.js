@@ -1,5 +1,6 @@
 (()=>{
  const cards=document.querySelector('#cards'),global=document.querySelector('#global');
+ const refreshers=[];
  const kinds={account:'账号概览',fans:'粉丝数据',works:'作品数据'};
  const stamp=value=>value?new Date(value).toLocaleString('zh-CN',{timeZone:'Asia/Shanghai'}):'尚未采集';
  function el(tag,text,cls){
@@ -13,13 +14,26 @@
   if(!response.ok)throw Error(data.error||'操作未完成');
   return data;
  }
- async function reports(id,list){
+ const reportStatus=status=>({pending:'已上传，待核对',imported:'读取成功',failed:'读取失败',rejected:'核对未通过'}[status]||'处理状态待确认');
+ async function reports(id,list,daily){
   const data=await request('/api/ops-sync/'+id+'/reports');
+  daily.replaceChildren();
+  const current=data.today||[];
+  daily.append(el('strong',(data.day||'今日')+' · 已上传 '+current.length+'/3'));
+  const badges=el('div',undefined,'daily-badges');
+  for(const [kind,label] of Object.entries(kinds)){
+   const report=current.find(value=>value.report_kind===kind);
+   const badge=el('span',label+' · '+(report?reportStatus(report.status):'今日未上传'),'daily-badge');
+   badge.dataset.state=report?.status||'missing';
+   if(report)badge.title='上传于 '+stamp(report.uploaded_at);
+   badges.append(badge);
+  }
+  daily.append(badges);
   list.replaceChildren();
   for(const report of data.reports){
    const item=el('li'),link=el('a',report.original_name);
    link.href='/api/ops-sync/'+id+'/reports?file='+encodeURIComponent(report.id);
-   item.append(link,el('div',(kinds[report.report_kind]||'报表')+' · '+stamp(report.uploaded_at)+' · '+(report.status==='pending'?'已上传，待核对':'已处理'),'muted'));
+   item.append(link,el('div',(kinds[report.report_kind]||'报表')+' · '+stamp(report.uploaded_at)+' · '+reportStatus(report.status),'muted'));
    list.append(item);
   }
   if(!data.reports.length)list.append(el('li','尚未上传报表','muted'));
@@ -36,7 +50,9 @@
     box.append(heading);
     const details=el('dl');
     for(const [label,value] of [['最近采集',stamp(account.last_at)],['数据截至',account.data_end||'尚未核实']])details.append(el('dt',label),el('dd',value));
-    box.append(details);
+    const daily=el('div',undefined,'daily-status');
+    daily.setAttribute('role','status');daily.textContent='正在检查今日上传…';
+    box.append(details,daily);
     const open=el('a','打开官方后台 ↗','button');
     open.href='https://creator.douyin.com/creator-micro/home';
     open.target='_blank';open.rel='noopener noreferrer';
@@ -63,7 +79,7 @@
      try{
       const result=await request('/api/ops-sync/'+account.id+'/reports?kind='+kind.value,{method:'POST',headers:{'Content-Type':'application/octet-stream','X-File-Name':encodeURIComponent(selected.name)},body:selected});
       message.textContent=result.message;file.value='';confirm.checked=false;
-      await reports(account.id,list);
+      await reports(account.id,list,daily);
      }catch(error){message.textContent=error.message;}
      finally{button.disabled=!data.can_operate;}
     };
@@ -71,9 +87,13 @@
     history.append(el('summary','上传记录'),list);
     box.append(form,el('p','CSV / XLSX / XLS · 单份小于20MB · 上传后待核对','file-hint'),history);
     cards.append(box);
-    reports(account.id,list).catch(error=>{list.textContent=error.message;});
+    const update=()=>reports(account.id,list,daily).catch(error=>{daily.textContent='今日上传状态暂不可用';list.textContent=error.message;});
+    refreshers.push(update);
+    void update();
    }
   }catch(error){global.textContent=error.message+'，请返回运营看板检查登录。';}
  }
+ document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshers.forEach(update=>update());});
+ setInterval(()=>{if(!document.hidden)refreshers.forEach(update=>update());},60000);
  load();
 })();
