@@ -8,6 +8,7 @@ async function opsImportReport(row,buffer,env){
  let daily;
  try{
   const rows=await opsWorkbookRows(buffer,row.original_name.split('.').pop().toLowerCase());
+  if(row.report_kind==='works')return await opsImportContent(row,rows,env);
   daily=opsParseDaily(rows,row.report_kind,new Date(Date.now()+28800000).toISOString().slice(0,10));
  }catch(error){
   const message=String(error.message||'报表读取失败').slice(0,250);
@@ -28,8 +29,9 @@ async function opsImportReport(row,buffer,env){
 }
 async function opsReportSnapshot(key,env,legacy){
  const rows=(await env.DB.prepare('SELECT metric_date,metric_key,metric_value,report_uploaded_at FROM douyin_daily_metrics WHERE account_key=? ORDER BY metric_date').bind(key).all()).results||[];
- if(!rows.length)return legacy;
- const data={...legacy},dates=new Map();
+ const top=await opsContentSummary(key,env);
+ if(!rows.length)return top?{...legacy,top}:legacy;
+ const data={...legacy,top},dates=new Map();
  for(const row of rows){if(!dates.has(row.metric_date))dates.set(row.metric_date,{});dates.get(row.metric_date)[row.metric_key]=row.metric_value;}
  const end=rows.at(-1).metric_date,today=new Date(Date.now()+28800000).toISOString().slice(0,10),yesterday=new Date(Date.parse(today)-86400000).toISOString().slice(0,10),start=today.slice(0,7)+'-01';
  data.at=Math.max(...rows.map(row=>row.report_uploaded_at));data.data_end=end;
