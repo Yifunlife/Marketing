@@ -22,6 +22,9 @@ class CoversTest(unittest.TestCase):
             result = covers.extract(archive,[work],output)
             self.assertEqual(len(result),1)
             self.assertEqual(result[0]['item_key'],work['date']+'|'+work['title'].strip())
+            page['WebMainResource']['WebResourceURL'] = 'https://creator.douyin.com/creator-micro/home'
+            archive.write_bytes(plistlib.dumps(page))
+            self.assertEqual(len(covers.extract(archive,[work],output)),1)
             self.assertEqual(covers.extract(archive,[{**work,'date':'2026-11-03 20:00:00'}],output),[])
             self.assertEqual(covers.extract(archive,[work,work],output),[])
             page['WebSubresources'] = []

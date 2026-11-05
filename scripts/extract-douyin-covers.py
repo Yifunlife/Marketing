@@ -68,7 +68,9 @@ def extract(path, works, output):
     archive = plistlib.loads(path.read_bytes())
     main = archive['WebMainResource']
     location = urlparse(main['WebResourceURL'])
-    if location.scheme != 'https' or location.hostname != 'creator.douyin.com' or location.path != '/creator-micro/content/manage':
+    # Safari retains the initial document URL after the official SPA navigates
+    # from home to content management. Actual rendered cards are verified below.
+    if location.scheme != 'https' or location.hostname != 'creator.douyin.com' or location.path not in {'/creator-micro/content/manage', '/creator-micro/home'}:
         raise ValueError('Not the official content management page')
     page = Page()
     page.feed(main['WebResourceData'].decode('utf-8'))

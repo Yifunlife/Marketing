@@ -5,6 +5,7 @@ const app='com.apple.Safari',downloads='/Users/markfang/Downloads';
 const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const state=sky=>sky.get_app_state({app,disableDiff:true});
 export function factoryIdentityMatches(text){return text.includes('亦玩游乐设备工厂')&&/抖音号[：:]\s*shanghaiyiwan(?:\s|$)/.test(text);}
+export function coverTitleMatches(text,title){return text.replace(/\s+/g,'').includes(title.replace(/\s+/g,''));}
 async function until(sky,predicate,label,timeout=20000){
  const end=Date.now()+timeout;
  do{const s=await state(sky);if(predicate(s.text))return s;await pause(700);}while(Date.now()<end);
@@ -53,18 +54,18 @@ export async function collectFactoryExports(sky){
 
 export async function saveFactoryWorkCovers(sky,works){
  if(!Array.isArray(works)||works.length>10||!works.length)throw Error('只采集已核实排行榜前10名');
- const result=[];
+ const result=[],stamp=Date.now();
  for(let i=0;i<works.length;i++){
   const work=works[i];let s=await state(sky);
   if(!s.text.includes('URL: creator.douyin.com/creator-micro/content/manage'))throw Error('不在官方作品列表');
   await sky.set_value({app,element_index:index(s.text,/(\d+) 文本栏 \(settable\)[^\n]*搜索作品/),value:work.title.slice(0,22)});
   await sky.press_key({app,key:'Return'});
   const minute=work.date.slice(0,16).replace('-','年').replace('-','月').replace(' ','日 ');
-  await until(sky,t=>t.includes(work.title.trim())&&t.includes(minute),'标题与发布时间匹配');
+  await until(sky,t=>coverTitleMatches(t,work.title)&&t.includes(minute),'标题与发布时间匹配');
   await pause(700);await sky.press_key({app,key:'super+s'});
   s=await state(sky);
   if(!s.text.includes('网页归档')||!s.text.includes('Value: 下载'))throw Error('请将 Safari 保存格式设为网页归档、位置设为下载；未保存错误格式');
-  const name='douyin-factory-collection-'+String(i+1).padStart(2,'0')+'.webarchive';
+  const name='douyin-factory-collection-'+stamp+'-'+String(i+1).padStart(2,'0')+'.webarchive';
   await sky.set_value({app,element_index:index(s.text,/(\d+) 文本栏[^\n]*ID: saveAsNameTextField/),value:name});
   await sky.click({app,element_index:index(s.text,/(\d+) 按钮 保存, ID: OKButton/)});await state(sky);
   result.push(downloads+'/'+name);
