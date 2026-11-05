@@ -15,3 +15,10 @@ test('management actions show evidence and owner, without attributing causes or 
 test('daily decline alert needs consecutive days and states observation without causation',()=>{const c=setup(),data={daily:[{date:'2026-11-02',plays:457},{date:'2026-11-03',plays:244}]};assert.match(c.accountManagement(['抖音','工厂号'],data),/244，较前一日 ↓46.6%/);data.daily[0].date='2026-11-01';assert(!c.accountManagement(['抖音','工厂号'],data).includes('244，较前一日'));});
 
 test('CTR absolute change is labelled in percentage points',()=>{const c=setup();assert.match(c.metricChange(8,4,{unit:'个百分点'}),/↑ 100.0% · 增加 4个百分点/);});
+
+test('interval ranking uses increments and can switch to cumulative without mixing time scopes',()=>{
+ const c=setup(),item={title:'CT机',published_at:'2024-09-13 16:46:40',plays:112556,delta_plays:52,likes:731,cover_url:'/api/cover'};
+ const data={top:{at:2000,scope:'累计快照',items:[item],interval:{status:'ok',start:1000,end:2000,compared:1000,missing:0,corrected:0,items:[item]}}};
+ let html=c.contentRanking(data);assert(html.includes('新增播放前10名 · 两次采集之间'));assert(html.includes('<td>52</td>'));assert(html.includes('其他指标为本次累计值'));assert(html.includes('不是官方昨日自然日排名'));assert(html.includes('真实封面 1/1'));
+ c.douyinRankingMode='cumulative';html=c.contentRanking(data);assert(html.includes('<td>112,556</td>'));assert(html.includes('<th>累计播放</th>'));assert(!html.includes('新增播放前10名 · 两次采集之间'));
+});
