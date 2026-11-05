@@ -30,3 +30,19 @@ async function oeEnterpriseProbe(env){
  await xput('oe:enterprise-probe',result,env);
  return result;
 }
+
+async function oeAdIdentityProbe(env){
+ const token=await oeFreshToken(env),candidates=await xget('oe:enterprise-probe',env);
+ const result={checked_at:Date.now(),accounts:[]};
+ for(const a of (candidates?.accounts||[]).filter(a=>a.account_source==='AD').slice(0,20)){
+  const item={...a,awemes:[]};
+  try{let page=1,total=1;do{
+   const data=await oeLocalGet('2/tools/aweme_auth_list/',{advertiser_id:a.id,page:String(page),page_size:'100'},token);
+   if(!Array.isArray(data.list))throw Error('广告抖音授权列表格式异常');
+   total=Number(data.page_info?.total_page||1);if(!Number.isSafeInteger(total)||total<1||total>20)throw Error('授权分页异常');
+   for(const row of data.list)item.awemes.push({id:String(row.aweme_id||''),name:String(row.aweme_name||''),auth_status:String(row.auth_status||'')});page++;
+  }while(page<=total);item.status='ok';}catch(e){item.status='error';item.error=oeSafeError(e);item.code=e.oeCode||null;}
+  result.accounts.push(item);
+ }
+ await xput('oe:ad-identities',result,env);return result;
+}

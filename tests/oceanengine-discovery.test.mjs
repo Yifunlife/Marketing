@@ -18,3 +18,8 @@ test('enterprise query failures remain explicit and unsafe IDs cannot become acc
  const {c}=setup();c.oeLocalGet=async()=>({account_list:[{account_id:Number.MAX_SAFE_INTEGER+2,account_name:'工厂号'}]});
  const result=await c.oeEnterpriseProbe({});assert.equal(result.accounts.length,0);assert.equal(result.status,'partial');assert(result.checks.every(c=>c.status==='error'));
 });
+test('advertising identity probe never infers a factory binding from a workspace name',async()=>{
+ const {c,saved}=setup();saved.set('oe:enterprise-probe',{accounts:[{id:'1728056104268814',name:'上海亦玩游乐设备集团',account_source:'AD'}]});
+ c.oeLocalGet=async()=>({list:[{aweme_id:'other-account',aweme_name:'其他号',auth_status:'AUTHORIZED'}]});
+ const result=await c.oeAdIdentityProbe({});assert.equal(result.accounts[0].awemes[0].id,'other-account');assert(!saved.has('oe:binding:factory'));
+});

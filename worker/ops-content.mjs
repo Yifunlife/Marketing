@@ -32,11 +32,32 @@ async function opsImportContent(row,rows,env){
  return {status:'imported',message};
 }
 async function opsContentSummary(key,env){
- const latest=await env.DB.prepare("SELECT id,uploaded_at,review_message FROM creator_report_uploads WHERE account_key=? AND report_kind='works' AND status='imported' ORDER BY uploaded_at DESC LIMIT 1").bind(key).first();
+ const latest=await env.DB.prepare("SELECT id,uploaded_at,review_message FROM creator_report_uploads WHERE account_key=? AND report_kind='works' AND status='imported' ORDER BY uploaded_at DESC,id DESC LIMIT 1").bind(key).first();
  if(!latest)return null;
  const items=(await env.DB.prepare('SELECT i.title,i.published_at,i.plays,i.likes,i.comments,i.shares,i.collects,i.followers,i.completion,i.cover_url,i.item_url,c.sha256 AS cover_sha256,c.observed_at AS cover_observed_at FROM creator_content_items i LEFT JOIN creator_content_covers c ON c.account_key=i.account_key AND c.item_key=i.item_key WHERE i.account_key=? AND i.report_id=? ORDER BY i.plays DESC,i.published_at DESC LIMIT 10').bind(key,latest.id).all()).results||[];
  for(const item of items)if(item.cover_sha256)item.cover_url='/api/ops-sync/douyin-'+encodeURIComponent(key)+'/covers?sha='+item.cover_sha256;
- return {at:latest.uploaded_at,scope:latest.review_message,items};
+ return {at:latest.uploaded_at,scope:latest.review_message,items,interval:await opsContentInterval(key,env)};
+}
+
+async function opsContentInterval(key,env){
+ const history=(await env.DB.prepare("SELECT id,uploaded_at FROM (SELECT id,uploaded_at,ROW_NUMBER() OVER(PARTITION BY date(uploaded_at/1000,'unixepoch','+8 hours') ORDER BY uploaded_at DESC,id DESC) AS position FROM creator_report_uploads WHERE account_key=? AND report_kind='works' AND status='imported') WHERE position=1 ORDER BY uploaded_at DESC LIMIT 2").bind(key).all()).results||[];
+ if(history.length<2)return {status:'waiting',message:'需要两个采集日期的作品报表才能计算新增播放。'};
+ const [current,previous]=history;
+ const rows=(await env.DB.prepare('SELECT i.title,i.published_at,i.plays,i.likes,i.comments,i.shares,i.collects,i.followers,i.completion,i.item_url,p.plays AS previous_plays,c.sha256 AS cover_sha256 FROM creator_content_items i LEFT JOIN creator_content_items p ON p.account_key=i.account_key AND p.item_key=i.item_key AND p.report_id=? LEFT JOIN creator_content_covers c ON c.account_key=i.account_key AND c.item_key=i.item_key WHERE i.account_key=? AND i.report_id=?').bind(previous.id,key,current.id).all()).results||[];
+ const items=[];let missing=0,corrected=0;
+ for(const row of rows){
+  if(!Number.isFinite(row.plays)){missing++;continue;}
+  let base=row.previous_plays;
+  if(!Number.isFinite(base)){
+   const published=Date.parse(row.published_at.replace(' ','T')+'+08:00');
+   if(!Number.isFinite(published)||published<previous.uploaded_at||published>current.uploaded_at){missing++;continue;}
+   base=0;
+  }
+  const delta=row.plays-base;if(delta<0){corrected++;continue;}
+  items.push({...row,delta_plays:delta,cover_url:row.cover_sha256?'/api/ops-sync/douyin-'+encodeURIComponent(key)+'/covers?sha='+row.cover_sha256:null});
+ }
+ items.sort((a,b)=>b.delta_plays-a.delta_plays||b.plays-a.plays||b.published_at.localeCompare(a.published_at));
+ return {status:'ok',start:previous.uploaded_at,end:current.uploaded_at,compared:items.length,missing,corrected,items:items.slice(0,10)};
 }
 
 async function opsContentCover(req,env,target){

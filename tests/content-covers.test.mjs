@@ -30,3 +30,17 @@ test('new works reports reuse covers through the account and exact content key',
  assert(queries.some(q=>q.includes('c.account_key=i.account_key AND c.item_key=i.item_key')));
  assert(queries.some(q=>q.includes('i.report_id=?')));
 });
+test('interval growth preserves true zero, excludes corrections and old works without baselines',async()=>{
+ const {c}=setup(),start=Date.parse('2026-11-04T14:00:00+08:00'),end=Date.parse('2026-11-05T11:00:00+08:00');
+ const rows=[
+  {title:'旧视频',published_at:'2024-01-01 10:00:00',plays:120,previous_plays:100},
+  {title:'本窗口发布',published_at:'2026-11-04 20:00:00',plays:30,previous_plays:null},
+  {title:'旧作品无基线',published_at:'2023-01-01 10:00:00',plays:999,previous_plays:null},
+  {title:'指标回调',published_at:'2024-01-01 10:00:00',plays:80,previous_plays:100},
+  {title:'未增长',published_at:'2024-01-01 10:00:00',plays:100,previous_plays:100},
+ ];
+ const env={DB:{prepare:q=>({bind:()=>({all:async()=>({results:q.includes('ROW_NUMBER')?[{id:'current',uploaded_at:end},{id:'previous',uploaded_at:start}]:rows})})})}};
+ const result=await c.opsContentInterval('factory',env);
+ assert.equal(result.items[0].delta_plays,30);assert.equal(result.items[1].delta_plays,20);assert.equal(result.items[2].delta_plays,0);
+ assert.equal(result.missing,1);assert.equal(result.corrected,1);assert.equal(result.start,start);assert.equal(result.end,end);
+});
