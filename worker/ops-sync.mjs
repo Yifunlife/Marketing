@@ -1,6 +1,6 @@
 const opsSyncTargets={
  'douyin-garden':{platform:'抖音',label:'乐园号',url:'https://creator.douyin.com/creator-micro/home',origin:'https://creator.douyin.com',identity:'f09530',name:'上海亦玩游乐设备集团',key:'garden'},
- 'douyin-factory':{platform:'抖音',label:'工厂号',url:'https://creator.douyin.com/creator-micro/home',origin:'https://creator.douyin.com',identity:null,name:'亦玩游乐设备工厂',key:'factory'},
+ 'douyin-factory':{platform:'抖音',label:'工厂号',url:'https://creator.douyin.com/creator-micro/home',origin:'https://creator.douyin.com',identity:'shanghaiyiwan',name:'亦玩游乐设备工厂',key:'factory'},
  'douyin-toy':{platform:'抖音',label:'玩具号',url:'https://creator.douyin.com/creator-micro/home',origin:'https://creator.douyin.com',identity:'85639035334',name:'亦玩游乐玩具工厂',key:'toy'},
  'douyin-supertada':{platform:'抖音',label:'SUPER TADA',url:'https://creator.douyin.com/creator-micro/home',origin:'https://creator.douyin.com',identity:null,name:'SUPER TADA',key:'supertada'},
  'wechat-video':{platform:'微信视频号',label:'账号待核实',url:'https://channels.weixin.qq.com/',origin:'https://channels.weixin.qq.com'},
@@ -26,6 +26,7 @@ async function opsSyncApi(req,env,user){
  }
  const target=Object.prototype.hasOwnProperty.call(opsSyncTargets,id)?opsSyncTargets[id]:null;if(!target)return xjson({error:'未知平台账号'},404);
  if(action==='reports'&&target.key)return opsReportsApi(req,env,user,target);
+ if(action==='covers'&&target.key)return opsContentCover(req,env,target);
  if(!['start','check','collect','live','preview','control','screen','input','diagnostic'].includes(action))return xjson({error:'操作不存在'},404);
  if(['start','check','collect','input'].includes(action)&&req.method!=='POST'||['live','preview','control','screen','diagnostic'].includes(action)&&req.method!=='GET')return xjson({error:'操作不支持'},405);
  if(['live','preview','control','screen','diagnostic'].includes(action)&&!opsSyncAllowed(user,true))return xjson({error:'仅运营人员可打开扫码窗口'},403);

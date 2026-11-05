@@ -26,7 +26,7 @@ async function opsImportContent(row,rows,env){
   const chunk=items.slice(i,i+5);
   statements.push(env.DB.prepare('INSERT OR REPLACE INTO creator_content_items(report_id,account_key,item_key,title,published_at,plays,likes,comments,shares,collects,followers,completion,cover_url,item_url) VALUES '+chunk.map(()=>'(?,?,?,?,?,?,?,?,?,?,?,?,?,?)').join(',')).bind(...chunk.flatMap(item=>[row.id,row.account_key,item.key,item.title,item.date,item.plays,item.likes,item.comments,item.shares,item.collects,item.followers,item.completion,item.cover,item.url])));
  }
- const message='已读取'+items.length+'条作品累计表现。排行榜仅覆盖本文件；文件未含封面、作品ID或逐日新增数据。';
+ const message='已读取'+items.length+'条作品累计表现，排名仅覆盖本文件；不是每日新增排名。';
  statements.push(env.DB.prepare('UPDATE creator_report_uploads SET status=?,review_message=? WHERE id=?').bind('imported',message,row.id));
  await env.DB.batch(statements);
  return {status:'imported',message};
@@ -34,6 +34,18 @@ async function opsImportContent(row,rows,env){
 async function opsContentSummary(key,env){
  const latest=await env.DB.prepare("SELECT id,uploaded_at,review_message FROM creator_report_uploads WHERE account_key=? AND report_kind='works' AND status='imported' ORDER BY uploaded_at DESC LIMIT 1").bind(key).first();
  if(!latest)return null;
- const items=(await env.DB.prepare('SELECT title,published_at,plays,likes,comments,shares,collects,followers,completion,cover_url,item_url FROM creator_content_items WHERE account_key=? AND report_id=? ORDER BY plays DESC,published_at DESC LIMIT 10').bind(key,latest.id).all()).results||[];
+ const items=(await env.DB.prepare('SELECT i.title,i.published_at,i.plays,i.likes,i.comments,i.shares,i.collects,i.followers,i.completion,i.cover_url,i.item_url,c.sha256 AS cover_sha256,c.observed_at AS cover_observed_at FROM creator_content_items i LEFT JOIN creator_content_covers c ON c.account_key=i.account_key AND c.item_key=i.item_key WHERE i.account_key=? AND i.report_id=? ORDER BY i.plays DESC,i.published_at DESC LIMIT 10').bind(key,latest.id).all()).results||[];
+ for(const item of items)if(item.cover_sha256)item.cover_url='/api/ops-sync/douyin-'+encodeURIComponent(key)+'/covers?sha='+item.cover_sha256;
  return {at:latest.uploaded_at,scope:latest.review_message,items};
+}
+
+async function opsContentCover(req,env,target){
+ if(req.method!=='GET')return xjson({error:'方法不支持'},405);
+ const sha=new URL(req.url).searchParams.get('sha');
+ if(!/^[a-f0-9]{64}$/.test(sha||''))return xjson({error:'封面不存在'},404);
+ const row=await env.DB.prepare('SELECT object_key,content_type FROM creator_content_covers WHERE account_key=? AND sha256=? LIMIT 1').bind(target.key,sha).first();
+ if(!row)return xjson({error:'封面不存在'},404);
+ const object=await env.BUCKET.get(row.object_key);
+ if(!object)return xjson({error:'封面暂不可用'},404);
+ return new Response(object.body,{headers:{...xhsHeaders,'Content-Type':row.content_type,'Cache-Control':'private, max-age=3600','X-Content-Type-Options':'nosniff'}});
 }
