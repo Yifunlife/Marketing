@@ -32,7 +32,7 @@ for(const kind of ['account','fans','works']){
 const workRows=files.find(f=>f.kind==='works').rows,hi=workRows.findIndex(r=>r.includes('作品名称')&&r.includes('发布时间'));
 if(hi<0)throw Error('Missing works headers');
 const columns=Object.fromEntries(workRows[hi].map((name,i)=>[name,i]));
-const works=workRows.slice(hi+1).filter(r=>r[columns['作品名称']]).map(r=>({title:r[columns['作品名称']],date:r[columns['发布时间']],plays:Number(r[columns['播放量']])}));
+const works=workRows.slice(hi+1).filter(r=>r[columns['作品名称']]).map(r=>({title:String(r[columns['作品名称']]).trim(),date:String(r[columns['发布时间']]).trim(),plays:Number(r[columns['播放量']])}));
 const covers=option('covers')?JSON.parse(fs.readFileSync(option('covers'),'utf8')):[];
 for(const c of covers){
  if(works.filter(w=>w.date+'|'+w.title===c.item_key&&w.title===c.title&&w.date===c.published_at).length!==1)throw Error('Cover does not match exactly one exported work');

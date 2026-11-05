@@ -103,7 +103,7 @@ def extract(path, works, output):
         file = output / sha
         file.write_bytes(data)
         work = matches[0]
-        results.append({'item_key': work['date']+'|'+work['title'], 'title': work['title'], 'published_at': work['date'], 'sha256': sha, 'content_type': mime, 'path': str(file), 'source': 'https://creator.douyin.com/creator-micro/content/manage', 'observed_at': int(path.stat().st_mtime*1000)})
+        results.append({'item_key': work['date'].strip()+'|'+work['title'].strip(), 'title': work['title'].strip(), 'published_at': work['date'].strip(), 'sha256': sha, 'content_type': mime, 'path': str(file), 'source': 'https://creator.douyin.com/creator-micro/content/manage', 'observed_at': int(path.stat().st_mtime*1000)})
     return results
 
 
