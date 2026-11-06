@@ -58,7 +58,8 @@ function crmSummaryQueries(db, today) {
    FROM leads l ${crmConfirmedCampaign}
    LEFT JOIN crm_attribution_quality q ON q.lead_id=l.id
    WHERE l.acquired_day BETWEEN ? AND ?
-   GROUP BY c.id,c.platform,o.name,c.name ORDER BY customers DESC,c.id`).bind(start, today)
+   GROUP BY c.id,c.platform,o.name,c.name ORDER BY customers DESC,c.id`).bind(start, today),
+  ...crmSalesSummaryQueries(db,month)
  ];
 }
 
@@ -73,10 +74,10 @@ async function crmScheduledSync(env, source='crm') {
  try {
   if (!env.CRM_DB) throw Error('CRM未连接');
   const today = new Date(at + 8 * 3600000).toISOString().slice(0,10);
-  const [rows,deals,quotes,contracts,receipts,refunds,losses,campaigns] =
+  const [rows,deals,quotes,contracts,receipts,refunds,losses,campaigns,salesLeads,salesDeals] =
    (await env.CRM_DB.batch(crmSummaryQueries(env.CRM_DB, today))).map(result => result.results);
   const writtenAt = Date.now();
-  const snapshot = { version:2, run_id:id, trigger:source==='crm_manual'?'manual':'scheduled', at, written_at:writtenAt, today, rows, deals, quotes:quotes[0].quotes, contracts, receipts, refunds, losses, campaigns };
+  const snapshot = { version:2, run_id:id, trigger:source==='crm_manual'?'manual':'scheduled', at, written_at:writtenAt, today, rows, deals, quotes:quotes[0].quotes, contracts, receipts, refunds, losses, campaigns, sales:crmSalesTotals(salesLeads,salesDeals) };
   const payload = await xseal(snapshot,env);
   await env.DB.batch([
    env.DB.prepare(`INSERT INTO xhs_settings(id,payload,updated_at) VALUES(?,?,?)

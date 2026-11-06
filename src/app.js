@@ -23,7 +23,7 @@ function crmSummaryContent(){
   waiting:s?'等待本轮写入，以下保留上次报表':'等待首次写入新报表'
  }[state?.status]||'正在读取报表';
  const schedule=' · 上海时间 08:00 / 12:00 / 22:00';
- const retry=['waiting','failed','stale'].includes(state?.status)?' <button data-crm-summary-sync>补跑业务报表</button>':'';
+ const retry=(['waiting','failed','stale'].includes(state?.status)||state?.status==='succeeded'&&!s?.sales)?' <button data-crm-summary-sync>补跑业务报表</button>':'';
 
  if(!s)return title+'<p role="status">'+status+schedule+'</p>'+retry+'</section>';
  const number=value=>value.toLocaleString('zh-CN');
@@ -50,6 +50,10 @@ function crmSummaryContent(){
   (s.losses.length?table(['本月登记未成交原因','客户记录数'],s.losses.map(row=>[displayText(row.reason),number(row.customers)])):'<p class="muted">本月暂无已登记的未成交原因。</p>')+'</details></section>';
 }
 function updateCrmSummaryPanel(){
+ for(const card of root.querySelectorAll('[data-crm-trade]')){
+  const content=crmTradeSummary(card.dataset.crmTrade);
+  if(card.innerHTML!==content)card.innerHTML=content;
+ }
  const panel=root.querySelector('[data-crm-summary]');
  if(!panel)return;
  const next=document.createElement('div');
@@ -83,12 +87,32 @@ root.addEventListener('click',event=>{
 document.addEventListener('visibilitychange',()=>void refreshCrmSummary());
 setInterval(()=>void refreshCrmSummary(),60000);
 
+function crmTradeSummary(market){
+ const foreign=market==='foreign', report=crmSummary?.report, sales=report?.sales?.[market];
+ const loading=crmSummary?.status==='restricted'?'主管理员可查看':'待同步';
+ const count=value=>Number.isFinite(value)?value.toLocaleString('zh-CN')+' 家':loading;
+ const money=sales?(sales.contracts.length?sales.contracts.map(item=>displayText(item.currency)+' '+(item.amount_minor/100).toLocaleString('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:2})).join('<br>'):sales.unverified_orders?'金额待核实':'暂无登记'):loading;
+ const adNote=foreign?'广告数据待接入':'广告费仅汇总已绑定账号，截至昨日。年度按当年1月1日起分月回补。';
+ const synced=report?.written_at?new Date(report.written_at).toLocaleString('zh-CN',{timeZone:'Asia/Shanghai'}):'';
+ const crmNote=sales?'业务 CRM · 在职员工及分公司 · 更新 '+synced+(crmSummary.status==='succeeded'?'':' · 保留上次数据'):'';
+ const metrics=[
+  ['已列账号数','9 个'],['本月总花销',foreign?'待同步':domesticAdTotal()],
+  ['本月成交金额',money,sales?.unverified_orders&&sales.contracts.length?'部分金额待核实':'按业务 CRM 成交日'],
+  ['本月投入产出比','待归属'],['年度总广告支出',foreign?'待同步':domesticAnnualTotal()],
+  ['月度总广告支出',foreign?'待同步':domesticAdTotal()],
+  ['A 类客户',count(sales?.a_customers),'累计 · 与销售看板同口径'],
+  ['已联系客户',count(sales?.contacted),'累计 · CRM 已记录联系时间']
+ ];
+ return '<h3>'+(foreign?'外贸':'内贸')+'平台汇总 · 正式数据</h3><small>'+adNote+'</small>'+
+  (sales?'<p class="muted">CRM 客户总数 '+count(sales.customers)+' · 本月新增 '+count(sales.new_customers)+' · 本月成交 '+sales.orders.toLocaleString('zh-CN')+' 单</p><small>'+crmNote+'</small>':'')+
+  '<div class="summary-grid">'+metrics.map(([label,value,note])=>'<div class="summary-cell"><small>'+label+'</small><strong>'+value+'</strong>'+(note?'<small>'+note+'</small>':metricComparison(label))+'</div>').join('')+'</div>';
+}
 function marketingDashboard(){
-function summary(title,foreign){const labels=['已列账号数','本月总花销','本月成交金额','本月投入产出比','年度总广告支出','月度总广告支出'];const values=['9 个',foreign?'0':domesticAdTotal(),'见业务汇总','待归属',foreign?'0':domesticAnnualTotal(),foreign?'0':domesticAdTotal()];return '<div class="panel summary '+(foreign?'foreign':'')+'"><h3>'+title+' · 正式数据</h3><small>'+(foreign?'未同步数字先显示0，采集到数据后自动更新':'广告费仅汇总已绑定账号，截至昨日；年度按当年1月1日起分月回补，缺失月份标为已采集部分；未取得广告费的账号显示待同步')+'</small><div class="summary-grid">'+labels.map((l,i)=>'<div class="summary-cell"><small>'+l+'</small><strong>'+values[i]+'</strong>'+metricComparison(l)+'</div>').join('')+'<div class="summary-cell"><small>A类商家</small><strong>见业务汇总</strong><small>按 CRM 来源查看 A 类客户</small></div><div class="summary-cell"><small>已联系客户</small><strong>见业务汇总</strong><small>按 CRM 来源查看跟进</small></div></div></div>';}
+function summary(market){return '<div class="panel summary '+(market==='foreign'?'foreign':'')+'" data-crm-trade="'+market+'">'+crmTradeSummary(market)+'</div>';}
 function group(title,platforms,foreign){return '<div class="platform-group"><h3>'+title+'</h3><div class="platforms '+(foreign?'foreign-platforms':'')+'">'+platforms.map(name=>'<div class="platform"><h3>'+name+'</h3>'+accountRows.map((a,i)=>a[0]===name?'<button data-account="'+i+'">'+a[1]+'</button>':'').join('')+'</div>').join('')+'</div></div>';}
 function ledger(title,foreign){return '<div class="panel"><h3>'+title+'</h3><small>'+(foreign?'尚未接入自动同步': '已接入账号内容按逐日报表采集；未接入账号保留原快照；聚光广告按日同步，截至昨日')+' · 未取得广告费时显示待同步</small><div class="scroll"><table><thead><tr>'+['平台','运营账号','负责人','总粉丝','本月增粉','昨日增粉','本月发布','本月花销','本月成交金额','投入产出比'].map(x=>'<th>'+x+'</th>').join('')+'</tr></thead><tbody>'+accountRows.map((a,i)=>{if(i>=18||(i>=9)!==foreign)return '';return '<tr><td>'+a[0]+'</td><td>'+a[1]+(i===6&&hasFactorySnapshot()?' · 亦玩游乐玩具工厂':'')+'</td><td>'+accountOwner(a)+'</td><td>'+(creatorValue(a,'fans')??(i===6&&hasFactorySnapshot()?'__XHS_FANS__':'0'))+'</td>'+[creatorValue(a,'net_followers')??'0',creatorValue(a,'yesterday_net')??'0',creatorValue(a,'posts')??(i===6&&hasFactorySnapshot()?'12 条':'0'),accountAdFee(a),'待归属','待归属'].map(v=>'<td>'+v+'</td>').join('')+'</tr>';}).join('')+'</tbody></table></div><small>粉丝值来源于创作后台粉丝页；已接入账号的发布、净增及内容指标来自逐日导出报表。总粉丝页面未注明截止时间，详情页显示采集时间；未接入账号的内容指标可能显示0作为占位，登录和采集状态请看运营数据同步区。</small></div>';}
 
-return '<div class="row between"><div><small>亦玩 Workplace / 部门 / 运营部</small><h2>工作总台</h2></div><span class="badge">统计范围：本月</span></div><div class="two">'+summary('内贸平台汇总',false)+summary('外贸平台汇总',true)+'</div><div class="panel"><h3>运营平台总览</h3><div class="two" style="margin-top:14px">'+group('内贸平台 · 3 个平台 / 9 个账号',['抖音','小红书','视频号'],false)+group('外贸平台 · 4 个平台 / 9 个账号',['Instagram','Facebook','YouTube','TikTok'],true)+'</div><div id="ga-account-detail" class="account-detail" hidden aria-live="polite"></div></div>'+ledger('内贸平台账号运营',false)+ledger('外贸平台账号运营',true)+crmSummaryPanel();
+return '<div class="row between"><div><small>亦玩 Workplace / 部门 / 运营部</small><h2>工作总台</h2></div><span class="badge">统计范围：本月</span></div><div class="two">'+summary('domestic')+summary('foreign')+'</div><div class="panel"><h3>运营平台总览</h3><div class="two" style="margin-top:14px">'+group('内贸平台 · 3 个平台 / 9 个账号',['抖音','小红书','视频号'],false)+group('外贸平台 · 4 个平台 / 9 个账号',['Instagram','Facebook','YouTube','TikTok'],true)+'</div><div id="ga-account-detail" class="account-detail" hidden aria-live="polite"></div></div>'+ledger('内贸平台账号运营',false)+ledger('外贸平台账号运营',true)+crmSummaryPanel();
 }
 
 

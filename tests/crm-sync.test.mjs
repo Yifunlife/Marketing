@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 
-const source = fs.readFileSync('worker/crm-sync.mjs','utf8');
+const source = ['worker/crm-sales-summary.mjs','worker/crm-sync.mjs'].map(file=>fs.readFileSync(file,'utf8')).join('\n');
 const noon = Date.parse('2026-11-06T12:00:00+08:00');
 const owner = {role:'owner',must_change:false};
 const request = new Request('https://site/api/crm/summary');
@@ -63,7 +63,7 @@ test('report and success are written in one batch, and a failed write preserves 
    prepare:sql=>({bind:(...args)=>({sql,args,run:async()=>{log.push(args);return {meta:{changes:1}};}})}),
    batch:async statements=>{log.push(statements);if(fail)throw Error('database offline');}
   };
-  const crmDb={prepare:db.prepare,batch:async()=>Array.from({length:8},(_,i)=>({results:i===2?[{quotes:0}]:[]}))};
+  const crmDb={prepare:db.prepare,batch:async()=>Array.from({length:10},(_,i)=>({results:i===2?[{quotes:0}]:[]}))};
   const task=runtime(noon).crmScheduledSync({DB:db,CRM_DB:crmDb});
   if(fail)await assert.rejects(task,/database offline/);
   else await task;
@@ -73,4 +73,26 @@ test('report and success are written in one batch, and a failed write preserves 
   assert.equal(statusWrite.args[2],reportWrite.args[1]);
   assert.equal(log[2]?.[0],fail?'failed':undefined);
  }
+});
+
+
+test('sales cards respect the CRM market classification and keep unknown deals out of amount totals',()=>{
+ const c=runtime(noon);
+ const lead={customers:1,new_customers:1,a_customers:1,contacted:0};
+ const sales=c.crmSalesTotals([
+  {...lead,source:'小红书',country:'Australia'},
+  {...lead,source:'阿里巴巴',country:'中国',market_tag:'内贸'},
+  {...lead,country:'中国',branch_owner:1},
+  {...lead,source:'未登记'}
+ ],[
+  {country:'中国',currency:'CNY',orders:2,priced:1,amount_minor:1500},
+  {country:'Australia',currency:'CNY',orders:1,priced:1,amount_minor:9000}
+ ]);
+ assert.equal(sales.domestic.a_customers,1);
+ assert.equal(sales.foreign.a_customers,2);
+ assert.equal(sales.unclassified.a_customers,1);
+ assert.equal(sales.domestic.contracts[0].amount_minor,1500);
+ assert.equal(sales.domestic.unverified_orders,1);
+ assert.equal(sales.foreign.unverified_orders,1);
+ assert.equal(sales.foreign.contracts.length,0);
 });
