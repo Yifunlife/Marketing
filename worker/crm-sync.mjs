@@ -70,12 +70,49 @@ async function crmScheduledSync(env) {
   const today = new Date(at + 8 * 3600000).toISOString().slice(0,10);
   const [rows,deals,quotes,contracts,receipts,refunds,losses,campaigns] =
    (await env.CRM_DB.batch(crmSummaryQueries(env.CRM_DB, today))).map(result => result.results);
-  const snapshot = { version:2, at, today, rows, deals, quotes:quotes[0].quotes, contracts, receipts, refunds, losses, campaigns };
-  await xput('crm:summary',snapshot,env);
-  await env.DB.prepare('UPDATE sync_runs SET status=?,finished_at=? WHERE id=?').bind('succeeded',Date.now(),id).run();
-  return snapshot;
+  const writtenAt = Date.now();
+  const snapshot = { version:2, run_id:id, at, written_at:writtenAt, today, rows, deals, quotes:quotes[0].quotes, contracts, receipts, refunds, losses, campaigns };
+  const payload = await xseal(snapshot,env);
+  await env.DB.batch([
+   env.DB.prepare(`INSERT INTO xhs_settings(id,payload,updated_at) VALUES(?,?,?)
+    ON CONFLICT(id) DO UPDATE SET payload=excluded.payload,updated_at=excluded.updated_at
+    WHERE xhs_settings.updated_at<=excluded.updated_at`).bind('crm:summary',payload,at),
+   env.DB.prepare(`UPDATE sync_runs SET finished_at=?,status=CASE
+    WHEN EXISTS(SELECT 1 FROM xhs_settings WHERE id=? AND payload=?) THEN 'succeeded'
+    ELSE 'skipped' END WHERE id=?`).bind(writtenAt,'crm:summary',payload,id)
+  ]);
  } catch (error) {
   await env.DB.prepare('UPDATE sync_runs SET status=?,finished_at=? WHERE id=?').bind('failed',Date.now(),id).run();
   throw error;
  }
+}
+
+
+function crmExpectedSlot(now) {
+ const day = new Date(now+8*3600000).toISOString().slice(0,10);
+ const localMidnight = Date.parse(day+'T00:00:00+08:00');
+ const hours = 3600000;
+ return [22,12,8,-2].map(hour=>localMidnight+hour*hours).find(slot=>slot<=now);
+}
+
+async function crmSummaryApi(req,env,user) {
+ if (user.role!=='owner'||user.must_change) return json({error:'仅主管理员可读取业务报表'},403);
+ if (req.method!=='GET') return json({error:'仅支持读取业务报表'},405);
+ const [saved,latest] = await env.DB.batch([
+  env.DB.prepare('SELECT payload,updated_at FROM xhs_settings WHERE id=?').bind('crm:summary'),
+  env.DB.prepare(`SELECT id,status,started_at,finished_at FROM sync_runs
+   WHERE source='crm' ORDER BY started_at DESC,id DESC LIMIT 1`)
+ ]);
+ const row = saved.results[0], run = latest.results[0];
+ const stored = row ? await xopen(row.payload,env) : null;
+ const report = stored?.version===2 ? {...stored,written_at:stored.written_at??row.updated_at} : null;
+ const isCurrent = report && run && (report.run_id ? report.run_id===run.id : report.at===run.started_at);
+ const now = Date.now(), expected = crmExpectedSlot(now);
+ const thisSlot = run?.started_at>=expected;
+ let status = 'waiting';
+ if (thisSlot && run.status==='running' && now-run.started_at<15*60000) status = 'running';
+ else if (thisSlot && run.status==='failed') status = 'failed';
+ else if (thisSlot && isCurrent && run.status==='succeeded') status = 'succeeded';
+ else if (now-expected>=15*60000) status = 'stale';
+ return json({report,status,expected_at:expected});
 }
