@@ -41,7 +41,7 @@ test('a scheduled run is only current when it actually wrote the displayed repor
   assert.equal(result.report.run_id,'noon');
  }
  assert.equal((await ctx.crmSummaryApi(request,{}, {role:'viewer'})).status,403);
- assert.equal((await ctx.crmSummaryApi(new Request(request,{method:'POST'}),{},owner)).status,405);
+ assert.equal((await ctx.crmSummaryApi(new Request(request,{method:'DELETE'}),{},owner)).status,405);
 });
 
 test('an old report stays visible while the current slot is waiting or missed',async()=>{
@@ -60,7 +60,7 @@ test('report and success are written in one batch, and a failed write preserves 
  for(const fail of [false,true]){
   const log=[];
   const db={
-   prepare:sql=>({bind:(...args)=>({sql,args,run:async()=>log.push(args)})}),
+   prepare:sql=>({bind:(...args)=>({sql,args,run:async()=>{log.push(args);return {meta:{changes:1}};}})}),
    batch:async statements=>{log.push(statements);if(fail)throw Error('database offline');}
   };
   const crmDb={prepare:db.prepare,batch:async()=>Array.from({length:8},(_,i)=>({results:i===2?[{quotes:0}]:[]}))};

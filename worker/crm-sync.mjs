@@ -62,16 +62,21 @@ function crmSummaryQueries(db, today) {
  ];
 }
 
-async function crmScheduledSync(env) {
+async function crmScheduledSync(env, source='crm') {
  const id = crypto.randomUUID(), at = Date.now();
- await env.DB.prepare('INSERT INTO sync_runs(id,source,status,started_at) VALUES(?,?,?,?)').bind(id,'crm','running',at).run();
+ const started = await env.DB.prepare(`INSERT INTO sync_runs(id,source,status,started_at)
+  SELECT ?,?,'running',? WHERE NOT EXISTS(
+   SELECT 1 FROM sync_runs WHERE source IN ('crm','crm_manual') AND
+    ((status='running' AND started_at>?) OR (?='crm_manual' AND started_at>?))
+  )`).bind(id,source,at,at-15*60000,source,at-60000).run();
+ if (!started.meta?.changes) return false;
  try {
   if (!env.CRM_DB) throw Error('CRM未连接');
   const today = new Date(at + 8 * 3600000).toISOString().slice(0,10);
   const [rows,deals,quotes,contracts,receipts,refunds,losses,campaigns] =
    (await env.CRM_DB.batch(crmSummaryQueries(env.CRM_DB, today))).map(result => result.results);
   const writtenAt = Date.now();
-  const snapshot = { version:2, run_id:id, at, written_at:writtenAt, today, rows, deals, quotes:quotes[0].quotes, contracts, receipts, refunds, losses, campaigns };
+  const snapshot = { version:2, run_id:id, trigger:source==='crm_manual'?'manual':'scheduled', at, written_at:writtenAt, today, rows, deals, quotes:quotes[0].quotes, contracts, receipts, refunds, losses, campaigns };
   const payload = await xseal(snapshot,env);
   await env.DB.batch([
    env.DB.prepare(`INSERT INTO xhs_settings(id,payload,updated_at) VALUES(?,?,?)
@@ -81,6 +86,7 @@ async function crmScheduledSync(env) {
     WHEN EXISTS(SELECT 1 FROM xhs_settings WHERE id=? AND payload=?) THEN 'succeeded'
     ELSE 'skipped' END WHERE id=?`).bind(writtenAt,'crm:summary',payload,id)
   ]);
+  return true;
  } catch (error) {
   await env.DB.prepare('UPDATE sync_runs SET status=?,finished_at=? WHERE id=?').bind('failed',Date.now(),id).run();
   throw error;
@@ -97,11 +103,18 @@ function crmExpectedSlot(now) {
 
 async function crmSummaryApi(req,env,user) {
  if (user.role!=='owner'||user.must_change) return json({error:'仅主管理员可读取业务报表'},403);
- if (req.method!=='GET') return json({error:'仅支持读取业务报表'},405);
+ if (req.method==='POST') {
+  try {
+   const started = await crmScheduledSync(env,'crm_manual');
+   if (!started) return json({error:'正在同步或刚已执行，请稍后查看'},409);
+  } catch {
+   return json({error:'补跑失败，保留上次报表'},502);
+  }
+ } else if (req.method!=='GET') return json({error:'请求方式不支持'},405);
  const [saved,latest] = await env.DB.batch([
   env.DB.prepare('SELECT payload,updated_at FROM xhs_settings WHERE id=?').bind('crm:summary'),
   env.DB.prepare(`SELECT id,status,started_at,finished_at FROM sync_runs
-   WHERE source='crm' ORDER BY started_at DESC,id DESC LIMIT 1`)
+   WHERE source IN ('crm','crm_manual') ORDER BY started_at DESC,id DESC LIMIT 1`)
  ]);
  const row = saved.results[0], run = latest.results[0];
  const stored = row ? await xopen(row.payload,env) : null;

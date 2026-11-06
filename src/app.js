@@ -15,7 +15,7 @@ function crmSummaryContent(){
  if(state?.status==='restricted')return title+'<p class="muted">主管理员可查看业务汇总。</p></section>';
  const expected=state?.expected_at?'（应更新 '+time(state.expected_at)+'）':'';
  const status={
-  succeeded:'已写入新报表',
+  succeeded:s?.trigger==='manual'?'已写入新报表（手动补跑）':'已写入新报表',
   running:'正在生成本轮报表',
   failed:'本轮同步失败'+(s?'，以下保留上次报表':''),
   stale:'本轮尚未写入新报表'+expected+(s?'，以下保留上次报表':''),
@@ -23,7 +23,9 @@ function crmSummaryContent(){
   waiting:s?'等待本轮写入，以下保留上次报表':'等待首次写入新报表'
  }[state?.status]||'正在读取报表';
  const schedule=' · 上海时间 08:00 / 12:00 / 22:00';
- if(!s)return title+'<p role="status">'+status+schedule+'</p></section>';
+ const retry=['waiting','failed','stale'].includes(state?.status)?' <button data-crm-summary-sync>补跑业务报表</button>':'';
+
+ if(!s)return title+'<p role="status">'+status+schedule+'</p>'+retry+'</section>';
  const number=value=>value.toLocaleString('zh-CN');
  const total=key=>number(s.rows.reduce((sum,row)=>sum+row[key],0));
  const showMoney=items=>items.length?items.map(item=>displayText(item.currency||'币种未记录')+' '+(item.amount_minor/100).toLocaleString('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:2})).join('<br>'):'暂无记录';
@@ -37,7 +39,7 @@ function crmSummaryContent(){
  const linked=s.campaigns.reduce((sum,row)=>sum+row.customers,0);
  const newCount=s.rows.reduce((sum,row)=>sum+row.new_customers,0);
  return title+'<p role="status"><strong>'+status+'</strong> · 报表写入 '+time(s.written_at)+
-  ' · 业务日期 '+displayText(s.today)+schedule+'</p>'+
+  ' · 业务日期 '+displayText(s.today)+schedule+'</p>'+retry+
   table(['本月新增客资记录','本月已关联报价','本月成交单','本月合同金额','本月回款','本月退款'],[[
    total('new_customers'),s.quotes?number(s.quotes):'暂无记录',orders?number(orders):'暂无记录',showMoney(s.contracts),showMoney(s.receipts),showMoney(s.refunds)
   ]])+(unpriced?'<p class="muted">'+number(unpriced)+' 笔成交缺合同金额或币种，金额为已登记部分。</p>':'')+
@@ -47,30 +49,39 @@ function crmSummaryContent(){
   (s.campaigns.length?table(['平台','账号','广告活动','本月客户','已判有效'],s.campaigns.map(row=>[displayText(row.platform),displayText(row.account),displayText(row.campaign),number(row.customers),number(row.valid_customers)])):'')+
   (s.losses.length?table(['本月登记未成交原因','客户记录数'],s.losses.map(row=>[displayText(row.reason),number(row.customers)])):'<p class="muted">本月暂无已登记的未成交原因。</p>')+'</details></section>';
 }
-async function refreshCrmSummary(){
+function updateCrmSummaryPanel(){
+ const panel=root.querySelector('[data-crm-summary]');
+ if(!panel)return;
+ const next=document.createElement('div');
+ next.innerHTML=crmSummaryContent();
+ const previousDetails=panel.querySelectorAll('details');
+ next.querySelectorAll('details').forEach((detail,index)=>{detail.open=previousDetails[index]?.open??false;});
+ if(panel.innerHTML!==next.innerHTML)panel.replaceChildren(...next.childNodes);
+}
+async function refreshCrmSummary(method='GET'){
  if(crmSummaryLoading||document.hidden||!root.querySelector('[data-crm-summary]'))return;
  crmSummaryLoading=true;
+ if(method==='POST'){
+  crmSummary={...crmSummary,status:'running'};
+  updateCrmSummaryPanel();
+ }
  try{
-  const response=await fetch('/api/crm/summary',{cache:'no-store',signal:AbortSignal.timeout(15000)});
+  const response=await fetch('/api/crm/summary',{method,cache:'no-store',signal:AbortSignal.timeout(method==='POST'?60000:15000)});
   if(response.status===401||response.status===403)crmSummary={status:'restricted'};
   else if(response.ok)crmSummary=await response.json();
-  else crmSummary={...crmSummary,status:'unavailable'};
+  else if(response.status!==409)crmSummary={...crmSummary,status:method==='POST'?'failed':'unavailable'};
  }catch{
   crmSummary={...crmSummary,status:'unavailable'};
  }finally{
   crmSummaryLoading=false;
  }
- const panel=root.querySelector('[data-crm-summary]');
- if(!panel)return;
- const content=crmSummaryContent();
- const next=document.createElement('div');
- next.innerHTML=content;
- const previousDetails=panel.querySelectorAll('details');
- next.querySelectorAll('details').forEach((detail,index)=>{detail.open=previousDetails[index]?.open??false;});
- if(panel.innerHTML!==next.innerHTML)panel.replaceChildren(...next.childNodes);
+ updateCrmSummaryPanel();
 }
+root.addEventListener('click',event=>{
+ if(event.target.closest('[data-crm-summary-sync]'))void refreshCrmSummary('POST');
+});
 document.addEventListener('visibilitychange',()=>void refreshCrmSummary());
-setInterval(refreshCrmSummary,60000);
+setInterval(()=>void refreshCrmSummary(),60000);
 
 function marketingDashboard(){
 function summary(title,foreign){const labels=['已列账号数','本月总花销','本月成交金额','本月投入产出比','年度总广告支出','月度总广告支出'];const values=['9 个',foreign?'0':domesticAdTotal(),'见业务汇总','待归属',foreign?'0':domesticAnnualTotal(),foreign?'0':domesticAdTotal()];return '<div class="panel summary '+(foreign?'foreign':'')+'"><h3>'+title+' · 正式数据</h3><small>'+(foreign?'未同步数字先显示0，采集到数据后自动更新':'广告费仅汇总已绑定账号，截至昨日；年度按当年1月1日起分月回补，缺失月份标为已采集部分；未取得广告费的账号显示待同步')+'</small><div class="summary-grid">'+labels.map((l,i)=>'<div class="summary-cell"><small>'+l+'</small><strong>'+values[i]+'</strong>'+metricComparison(l)+'</div>').join('')+'<div class="summary-cell"><small>A类商家</small><strong>见业务汇总</strong><small>按 CRM 来源查看 A 类客户</small></div><div class="summary-cell"><small>已联系客户</small><strong>见业务汇总</strong><small>按 CRM 来源查看跟进</small></div></div></div>';}
