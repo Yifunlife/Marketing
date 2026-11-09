@@ -10,8 +10,8 @@ const entry=`
 const OPS_SYNC_HTML=${JSON.stringify(opsSyncHtml)};
 export default {
  async scheduled(event,env,ctx){
-  // Cloudflare uses UTC. These are 08:00, 12:00 and 22:00 in Shanghai.
-  if(!['0 0 * * *','0 4 * * *','0 14 * * *'].includes(event.cron))return;
+  // Cloudflare uses UTC. These are 09:00, 12:00 and 22:00 in Shanghai.
+  if(!['0 1 * * *','0 4 * * *','0 14 * * *'].includes(event.cron))return;
   ctx.waitUntil(crmScheduledSync(env));
   ctx.waitUntil(scheduledCreatorsSync(env));
   ctx.waitUntil(scheduledSync(env));
