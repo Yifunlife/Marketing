@@ -25,7 +25,7 @@ npx wrangler deploy
 - `/brand-logo.png`：从R2读取公开品牌Logo；历史示例PDF归档在私有R2对象中。
 - 本地原视频目录继续只在本机读取，不会自动上传。
 
-每天上海时间 09:00、12:00、22:00 检查昨日广告报表。当日已成功的账号直接跳过。官方离线数据最早次日10点产出；未提供指标为缺失，不当作0。广告数据不等于自然流量或CRM有效客户。小红书应用回调已更新为 `https://yifun-marketing.yifunlife.workers.dev/integrations/xiaohongshu/callback`。
+每天上海时间 10:30、13:00、22:00 检查昨日广告报表。当日已成功的账号直接跳过。官方离线数据最早次日10点产出；未提供指标为缺失，不当作0。广告数据不等于自然流量或CRM有效客户。小红书应用回调已更新为 `https://yifun-marketing.yifunlife.workers.dev/integrations/xiaohongshu/callback`。
 
 ## main 同步
 
@@ -39,4 +39,4 @@ https://yifun-marketing.yifunlife.workers.dev
 
 ### 乐园号创作后台采集
 
-Cloudflare 每天上海时间 09:00、12:00、22:00 检查乐园号创作后台，导出四类逐日报表。经校验后将指标写入 D1，原始 XLSX 写入私有 R2。当天已成功则跳过后续时点。运行说明见 docs/creator-collection.md。
+Cloudflare 每天上海时间 10:30、13:00、22:00 检查乐园号创作后台，导出四类逐日报表。经校验后将指标写入 D1，原始 XLSX 写入私有 R2。当天已成功则跳过后续时点。运行说明见 docs/creator-collection.md。

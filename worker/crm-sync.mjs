@@ -98,8 +98,8 @@ async function crmScheduledSync(env, source='crm') {
 function crmExpectedSlot(now) {
  const day = new Date(now+8*3600000).toISOString().slice(0,10);
  const localMidnight = Date.parse(day+'T00:00:00+08:00');
- const hours = 3600000;
- return [22,12,8,-2].map(hour=>localMidnight+hour*hours).find(slot=>slot<=now);
+ const minutes = 60000;
+ return [22*60,13*60,10*60+30,-2*60].map(minute=>localMidnight+minute*minutes).find(slot=>slot<=now);
 }
 
 async function crmSummaryApi(req,env,user) {

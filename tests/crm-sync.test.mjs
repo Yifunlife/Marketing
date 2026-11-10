@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 
 const source = ['worker/crm-sales-summary.mjs','worker/crm-sync.mjs'].map(file=>fs.readFileSync(file,'utf8')).join('\n');
-const noon = Date.parse('2026-11-06T12:00:00+08:00');
+const noon = Date.parse('2026-11-06T13:00:00+08:00');
 const owner = {role:'owner',must_change:false};
 const request = new Request('https://site/api/crm/summary');
 
@@ -45,7 +45,7 @@ test('a scheduled run is only current when it actually wrote the displayed repor
 });
 
 test('an old report stays visible while the current slot is waiting or missed',async()=>{
- const prior = {version:2,at:noon-4*3600000};
+ const prior = {version:2,at:noon-150*60000};
  const priorRun = {id:'morning',status:'succeeded',started_at:prior.at};
  for (const [time,status] of [[noon+60_000,'waiting'],[noon+15*60000,'stale']]) {
   const result=await (await runtime(time).crmSummaryApi(request,summaryEnv(prior,priorRun),owner)).json();
@@ -53,7 +53,11 @@ test('an old report stays visible while the current slot is waiting or missed',a
   assert.equal(result.expected_at,noon);
   assert.equal(result.report.written_at,prior.at+10);
  }
- assert.equal(vm.runInContext('crmExpectedSlot(Date.now())',runtime(noon-5*3600000)),noon-14*3600000);
+ assert.equal(vm.runInContext('crmExpectedSlot(Date.now())',runtime(noon-5*3600000)),noon-15*3600000);
+ const morning=noon-150*60000;
+ assert.equal(runtime(morning-1).crmExpectedSlot(morning-1),noon-15*3600000);
+ assert.equal(runtime(morning).crmExpectedSlot(morning),morning);
+ assert.equal(runtime(noon-1).crmExpectedSlot(noon-1),morning);
 });
 
 test('report and success are written in one batch, and a failed write preserves the prior report',async()=>{
