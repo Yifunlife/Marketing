@@ -113,7 +113,7 @@ function group(title,platforms,foreign){return '<div class="platform-group"><h3>
 function ledger(title,foreign){
  const fmt=value=>Number.isFinite(value)?value.toLocaleString('zh-CN'):'—';
  const rows=accountRows.filter(a=>foreignPlatforms.includes(a[0])===foreign);
- return '<div class="panel"><h3>'+title+'</h3><small>本月按已采集日期汇总，缺少日期时标明覆盖范围。粉丝按最近一次报表快照。</small><div class="scroll"><table><thead><tr>'+['平台','运营账号','数据日期与覆盖','总粉丝','本月发布（已采集）','本月增粉（已采集）','本月广告花费'].map(label=>'<th>'+label+'</th>').join('')+'</tr></thead><tbody>'+rows.map(a=>'<tr><td>'+a[0]+'</td><td>'+a[1]+'</td><td>'+accountCoverage(a)+'</td><td>'+fmt(creatorValue(a,'fans'))+'</td><td>'+fmt(creatorValue(a,'posts'))+'</td><td>'+fmt(creatorValue(a,'net_followers'))+'</td><td>'+accountAdFee(a)+'</td></tr>').join('')+'</tbody></table></div></div>';
+ return '<div class="panel"><h3>'+title+'</h3><small>本月按已采集日期汇总，粉丝按最近一次报表快照。</small><div class="scroll"><table><thead><tr>'+['平台','运营账号','数据日期','总粉丝','本月发布（已采集）','本月增粉（已采集）','本月广告花费'].map(label=>'<th>'+label+'</th>').join('')+'</tr></thead><tbody>'+rows.map(a=>'<tr><td>'+a[0]+'</td><td>'+a[1]+'</td><td>'+displayText(accountDataDate(a)||'—')+'</td><td>'+fmt(creatorValue(a,'fans'))+'</td><td>'+fmt(creatorValue(a,'posts'))+'</td><td>'+fmt(creatorValue(a,'net_followers'))+'</td><td>'+accountAdFee(a)+'</td></tr>').join('')+'</tbody></table></div></div>';
 }
 
 
