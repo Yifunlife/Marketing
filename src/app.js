@@ -3,7 +3,7 @@
 function cards(items){return '<div class="grid">'+items.map(([label,value,current=null,previous=null])=>'<div class="panel"><small>'+label+'</small><div class="value">'+value+'</div>'+metricComparison(label,current,previous)+'</div>').join('')+'</div>';}
 function customerTable(rows,edit){return '<div class="scroll"><table><thead><tr><th>客户 / 原始来源</th><th>业务员</th><th>CRM 标签</th><th>成交金额</th><th>反馈原因</th></tr></thead><tbody>'+rows.map(l=>'<tr><td>'+l.name+'<br><small>'+channels[l.channel].name+'</small></td><td>'+(l.owner||'待分配')+'</td><td>'+(edit?'<select data-stage="'+l.id+'" aria-label="'+l.name+'跟进标签">'+stages.map(s=>'<option '+(l.stage===s?'selected':'')+'>'+s+'</option>').join('')+'</select>':l.stage)+'</td><td>'+(edit?'<input type="number" min="0" step="100" data-amount="'+l.id+'" aria-label="'+l.name+'成交金额" value="'+l.amount+'" style="width:112px">':l.stage==='已成交'?money(l.amount):'—')+'</td><td>'+(edit?'<select data-reason="'+l.id+'" aria-label="'+l.name+'反馈原因">'+['','产品需求不匹配','价格原因','无法联系','交期不符'].map(s=>'<option '+(l.reason===s?'selected':'')+' value="'+s+'">'+(s||'未填写')+'</option>').join('')+'</select>':l.reason||'—')+'</td></tr>').join('')+'</tbody></table></div>';}function suggestions(){const a=metrics(0),b=metrics(1);return '<div class="entry"><h3>预算调整候选 · 搜索与展示</h3><p>搜索广告：'+a.won+' 位成交，成交客户成本 '+(a.won?money(6000/a.won):'暂无成交')+'；展示广告：'+b.won+' 位成交，成交客户成本 '+(b.won?money(4000/b.won):'暂无成交')+'。</p><small>仅据示例批次提出候选；先核查客户质量、跟进与成交周期，再进行小额实验。</small></div><div class="entry"><h3>客户承接检查</h3><p>'+state.leads.filter(l=>!l.owner).length+' 位客户待分配；'+state.leads.filter(l=>l.owner&&l.stage==='新客户').length+' 位已分配客户待首次联系。</p></div><div class="entry"><h3>无效原因反馈</h3><p>'+state.leads.filter(l=>l.stage==='无效客户').length+' 位标记无效；其中需求不匹配 '+state.leads.filter(l=>l.stage==='无效客户'&&l.reason==='产品需求不匹配').length+' 位。</p><small>结合业务员反馈检查广告表达和落地页；不能只凭成交率判断平台运营能力。</small></div>';}
 
-let monthlyAccount=null,monthlyMonth='2026-10',monthlyTraffic='全部',monthlyContent=null;const accountRows=[['抖音','SUPER TADA'],['小红书','SUPER TADA'],['抖音','工厂号'],['抖音','乐园号'],['抖音','玩具号'],['视频号','视频号'],['小红书','工厂号'],['小红书','乐园号'],['小红书','玩具号'],['Instagram','乐园号'],['Instagram','玩具号'],['Instagram','工厂号'],['Facebook','乐园号'],['Facebook','玩具号'],['Facebook','工厂号'],['YouTube','Yifunlife_play'],['YouTube','Yifunlife_Technicalsupport'],['TikTok','乐园号'],['阿里巴巴','演示店铺'],['独立站','演示站点'],['WhatsApp','演示业务账号']];
+let monthlyAccount=null,monthlyMonth='2026-10',monthlyTraffic='全部',monthlyContent=null;const accountRows=[['抖音','SUPER TADA'],['小红书','SUPER TADA'],['抖音','工厂号'],['抖音','乐园号'],['抖音','玩具号'],['视频号','视频号'],['小红书','工厂号'],['小红书','乐园号'],['小红书','玩具号'],['Instagram','乐园号'],['Instagram','玩具号'],['Instagram','工厂号'],['Facebook','乐园号'],['Facebook','玩具号'],['Facebook','工厂号'],['YouTube','Yifunlife_play'],['YouTube','Yifunlife_Technicalsupport'],['TikTok','乐园号'],['阿里巴巴','渠道汇总'],['独立站','渠道汇总'],['WhatsApp','渠道汇总']];accountRows.push(['抖音','IP号']);
 let crmSummary, crmSummaryLoading=false;
 function crmSummaryPanel(){
  return '<div data-crm-summary>'+crmSummaryContent()+'</div>';
@@ -92,14 +92,14 @@ function crmTradeSummary(market){
  const loading=crmSummary?.status==='restricted'?'主管理员可查看':'待同步';
  const count=value=>Number.isFinite(value)?value.toLocaleString('zh-CN')+' 家':loading;
  const money=sales?(sales.contracts.length?sales.contracts.map(item=>displayText(item.currency)+' '+(item.amount_minor/100).toLocaleString('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:2})).join('<br>'):sales.unverified_orders?'金额待核实':'暂无登记'):loading;
- const adNote=foreign?'广告数据待接入':'广告费仅汇总已绑定账号，截至昨日。年度按当年1月1日起分月回补。';
+ const adNote=foreign?'按已上传广告日报汇总，金额按币种分别展示':'广告费仅汇总已绑定账号，截至昨日。年度按当年1月1日起分月回补。';
  const synced=report?.written_at?new Date(report.written_at).toLocaleString('zh-CN',{timeZone:'Asia/Shanghai'}):'';
  const crmNote=sales?'业务 CRM · 在职员工及分公司 · 更新 '+synced+(crmSummary.status==='succeeded'?'':' · 保留上次数据'):'';
  const metrics=[
-  ['已列账号数','9 个'],['本月总花销',foreign?'待同步':domesticAdTotal()],
+  ['已列账号数',accountRows.filter(a=>foreignPlatforms.includes(a[0])===foreign).length+' 个'],['本月总花销',foreign?uploadedAdTotal(true):domesticAdTotal()],
   ['本月成交金额',money,sales?.unverified_orders&&sales.contracts.length?'部分金额待核实':'按业务 CRM 成交日'],
-  ['本月投入产出比','待归属'],['年度总广告支出',foreign?'待同步':domesticAnnualTotal()],
-  ['月度总广告支出',foreign?'待同步':domesticAdTotal()],
+  ['本月投入产出比','待归属'],['年度总广告支出',foreign?uploadedAdTotal(true,true):domesticAnnualTotal()],
+  ['月度总广告支出',foreign?uploadedAdTotal(true):domesticAdTotal()],
   ['A 类客户',count(sales?.a_customers),'累计 · 与销售看板同口径'],
   ['已联系客户',count(sales?.contacted),'累计 · CRM 已记录联系时间']
  ];
@@ -110,7 +110,12 @@ function crmTradeSummary(market){
 function marketingDashboard(){
 function summary(market){return '<div class="panel summary '+(market==='foreign'?'foreign':'')+'" data-crm-trade="'+market+'">'+crmTradeSummary(market)+'</div>';}
 function group(title,platforms,foreign){return '<div class="platform-group"><h3>'+title+'</h3><div class="platforms '+(foreign?'foreign-platforms':'')+'">'+platforms.map(name=>'<div class="platform"><h3>'+name+'</h3>'+accountRows.map((a,i)=>a[0]===name?'<button data-account="'+i+'">'+a[1]+'</button>':'').join('')+'</div>').join('')+'</div></div>';}
-function ledger(title,foreign){return '<div class="panel"><h3>'+title+'</h3><small>'+(foreign?'尚未接入自动同步': '已接入账号内容按逐日报表采集；未接入账号保留原快照；聚光广告按日同步，截至昨日')+' · 未取得广告费时显示待同步</small><div class="scroll"><table><thead><tr>'+['平台','运营账号','负责人','总粉丝','本月增粉','昨日增粉','本月发布','本月花销','本月成交金额','投入产出比'].map(x=>'<th>'+x+'</th>').join('')+'</tr></thead><tbody>'+accountRows.map((a,i)=>{if(i>=18||(i>=9)!==foreign)return '';return '<tr><td>'+a[0]+'</td><td>'+a[1]+(i===6&&hasFactorySnapshot()?' · 亦玩游乐玩具工厂':'')+'</td><td>'+accountOwner(a)+'</td><td>'+(creatorValue(a,'fans')??(i===6&&hasFactorySnapshot()?'__XHS_FANS__':'0'))+'</td>'+[creatorValue(a,'net_followers')??'0',creatorValue(a,'yesterday_net')??'0',creatorValue(a,'posts')??(i===6&&hasFactorySnapshot()?'12 条':'0'),accountAdFee(a),'待归属','待归属'].map(v=>'<td>'+v+'</td>').join('')+'</tr>';}).join('')+'</tbody></table></div><small>粉丝值来源于创作后台粉丝页；已接入账号的发布、净增及内容指标来自逐日导出报表。总粉丝页面未注明截止时间，详情页显示采集时间；未接入账号的内容指标可能显示0作为占位，登录和采集状态请看运营数据同步区。</small></div>';}
+function ledger(title,foreign){
+ const fmt=value=>Number.isFinite(value)?value.toLocaleString('zh-CN'):'—';
+ const rows=accountRows.filter(a=>foreignPlatforms.includes(a[0])===foreign);
+ return '<div class="panel"><h3>'+title+'</h3><small>本月按已采集日期汇总，缺少日期时标明覆盖范围。粉丝按最近一次报表快照。</small><div class="scroll"><table><thead><tr>'+['平台','运营账号','数据日期与覆盖','总粉丝','本月发布（已采集）','本月增粉（已采集）','本月广告花费'].map(label=>'<th>'+label+'</th>').join('')+'</tr></thead><tbody>'+rows.map(a=>'<tr><td>'+a[0]+'</td><td>'+a[1]+'</td><td>'+accountCoverage(a)+'</td><td>'+fmt(creatorValue(a,'fans'))+'</td><td>'+fmt(creatorValue(a,'posts'))+'</td><td>'+fmt(creatorValue(a,'net_followers'))+'</td><td>'+accountAdFee(a)+'</td></tr>').join('')+'</tbody></table></div></div>';
+}
+
 
 return '<div class="row between"><div><small>亦玩 Workplace / 部门 / 运营部</small><h2>工作总台</h2></div><span class="badge">统计范围：本月</span></div><div class="two">'+summary('domestic')+summary('foreign')+'</div><div class="panel"><h3>运营平台总览</h3><div class="two" style="margin-top:14px">'+group('内贸平台 · 3 个平台 / 9 个账号',['抖音','小红书','视频号'],false)+group('外贸平台 · 4 个平台 / 9 个账号',['Instagram','Facebook','YouTube','TikTok'],true)+'</div><div id="ga-account-detail" class="account-detail" hidden aria-live="polite"></div></div>'+ledger('内贸平台账号运营',false)+ledger('外贸平台账号运营',true)+crmSummaryPanel();
 }
@@ -144,19 +149,33 @@ const verifiedNotes=__MARKETING_NOTES__;
 const liveXhsReport=__LIVE_XHS_REPORT__;
 const douyinCreator=__DOUYIN_CREATOR__;
 const douyinCreators=__DOUYIN_CREATORS__;
-function douyinData(a){return douyinCreators[({乐园号:"garden",工厂号:"factory",玩具号:"toy","SUPER TADA":"supertada"})[a[1]]]||null;}
+const manualPlatformReports=__MANUAL_PLATFORM_REPORTS__;
+function douyinData(a){return douyinCreators[({乐园号:"garden",工厂号:"factory",玩具号:"toy","SUPER TADA":"supertada",IP号:"ip"})[a[1]]]||null;}
 const liveOceanReports=__LIVE_OCEAN_REPORTS__;
 const liveXhsReports=__LIVE_XHS_REPORTS__;
 const creatorData=__CREATOR_REPORTS__;
 function creatorFor(a){return a[0]!=='小红书'?null:a[1]==='乐园号'?creatorData['49314445652']:a[1]==='工厂号'?creatorData.factory:a[1]==='玩具号'?creatorData.toy:a[1]==='SUPER TADA'?creatorData.supertada:null;}
-function creatorValue(a,key){if(a[0]==='抖音'){const report=douyinData(a);return key==='fans'?report?.fans??null:key==='yesterday_net'?report?.yesterday?.net_followers??null:report?.month?.[key]??null;}const data=creatorFor(a);if(!data)return null;if(key!=='fans'&&data.growth&&Object.hasOwn(data.growth,key))return data.growth[key];return key==='fans'?data.fans:key==='yesterday_net'?data.yesterday?.net_followers:data.month?.[key];}
+function creatorValue(a,key){
+ const data=a[0]==='抖音'?douyinData(a):creatorFor(a);
+ const native=key==='fans'?data?.fans:key==='yesterday_net'?data?.yesterday?.net_followers:data?.growth?.[key]??data?.month?.[key]??data?.month_partial?.[key];
+ return Number.isFinite(native)?native:manualMetric(a,key)?.value??null;
+}
+
 function creatorAccount(a,data){const month=data.month,previous=data.previous,content=month||data.yesterday;const contentStat=(key,label)=>[label,Number.isFinite(content?.[key])?content[key].toLocaleString():'—',content?.[key]??null,month?previous?.[key]??null:null];const stat=(key,label)=>[label,Number.isFinite(month?.[key])?month[key].toLocaleString():'—',month?.[key]??null,previous?.[key]??null];return '<div class="xhs-view">'+xhsStyle()+'<div class="panel account-heading"><button data-month-back>← 返回账号列表</button><small style="display:block;margin-top:8px">小红书 / '+a[1]+'</small><h2>'+data.display_name+'</h2><p>内容负责人 · '+accountOwner(a)+'</p><span class="xhs-status">页面采集于 '+new Date(data.last_success_at).toLocaleString('zh-CN',{timeZone:'Asia/Shanghai'})+(Date.now()-data.last_success_at>36*3600000?' · 数据可能过期':'')+'</span><details><summary>来源与更新方式</summary><p class="muted">'+(data.automation==='cloud_browser'?'每日10:30、13:00、22:00云端读取 · Mac锁屏或关机仍可执行；登录失效或报表延迟时保留旧数据。':'本机采集；云端定时尚未启用。')+'</p></details></div>'+accountManagement(a,data)+'<section class="panel xhs-section"><h3>01 / 账号增长与产出</h3>'+cards([['总粉丝',(Number.isFinite(data.fans)?data.fans.toLocaleString():'—')],stat('net_followers','本月净增粉丝'),stat('posts','本月发布'),['昨日净增粉丝',data.yesterday?.net_followers??'—'],['昨日发布',data.yesterday?.posts??'—']])+'<small>总粉丝来源：粉丝数据页，页面未标明截止时间。其余按逐日报表汇总，'+(month?month.start+' 至 '+month.end:'本月数据尚未完整覆盖')+'。缺少完整上月同期时不计算环比。</small>'+(data.net_difference_days?'<p class="muted">平台净涨粉与新增、取消关注存在口径差异；本看板净增按新增关注－取消关注计算。平台原值与原始报表均已保留。</p>':'')+'</section><section class="panel xhs-section"><h3>02 / '+(month?'本月账号内容表现':data.yesterday?'昨日账号内容表现':'账号内容表现')+'</h3>'+cards([contentStat('impressions','曝光'),contentStat('views','观看'),contentStat('likes','点赞'),contentStat('comments','评论'),contentStat('collects','收藏'),contentStat('shares','分享'),contentStat('profile_visits','主页访客')])+'<small>创作后台报表口径；未确认是否剔除广告流量，不标作纯自然流量。数据截至 '+(data.data_end||'待同步')+'。</small></section>'+xhsNoteRanking(data)+verifiedAds(accountAdReport(a))+adEfficiency(accountAdReport(a))+'</div>';}
 
 function hasFactorySnapshot(){return liveXhsReports.bindings?.factory!==null;}
 function accountAdReport(a){if(a[0]==='抖音'&&a[1]==='乐园号')return (liveOceanReports.accounts||[]).find(r=>r.target==='garden')||null;if(a[0]!=='小红书')return null;const key={'工厂号':'factory','乐园号':'garden','玩具号':'toy'}[a[1]],id=Object.prototype.hasOwnProperty.call(liveXhsReports.bindings||{},key)?liveXhsReports.bindings[key]:{'工厂号':'332719','乐园号':'136547'}[a[1]];return (liveXhsReports.accounts||[]).find(r=>r.id===id)||null;}
-function accountAdFee(a){const p=accountAdReport(a)?.periods?.month;return p?.status==='ok'&&p.metrics.fee!==null?'¥'+Number(p.metrics.fee).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}):'待同步';}
+function accountAdFee(a){
+ const p=accountAdReport(a)?.periods?.month;
+ if(p?.status==='ok'&&!p.stale&&p.start?.startsWith(reportToday().slice(0,7))&&Number.isFinite(p.metrics?.fee))return '¥'+p.metrics.fee.toLocaleString('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:2});
+ const groups=new Map();
+ for(const row of uploadedAds(a))groups.set(row.ad.currency,(groups.get(row.ad.currency)||0)+row.ad.spend);
+ return groups.size?[...groups].map(([currency,cents])=>displayText(currency)+' '+(cents/100).toLocaleString('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:2})).join('<br>'):'—';
+}
+
 function domesticAnnualTotal(){const reports=[...new Map(accountRows.slice(0,9).map(accountAdReport).filter(Boolean).map(r=>[r.id,r])).values()],years=reports.map(r=>r.periods.year),available=years.filter(y=>Number.isFinite(y?.metrics?.fee));if(!available.length)return '待同步';const total=available.reduce((n,y)=>n+y.metrics.fee,0),complete=years.every(y=>y?.status==='ok'&&!y.stale);return '¥'+total.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})+(complete?'':'（已采集部分）');}
-function domesticAdTotal(){const mapped=accountRows.slice(0,9).map(accountAdReport).filter(Boolean);const amounts=mapped.filter(r=>r.periods.month?.status==='ok').map(r=>r.periods.month.metrics.fee).filter(v=>v!==null);return amounts.length?'¥'+amounts.reduce((a,b)=>a+Number(b),0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}):'待同步';}
+function domesticAdTotal(){return uploadedAdTotal(false);}
+
 
 function verifiedAds(report=liveXhsReport){const current=report?.periods?.month||report?.periods?.yesterday,previous=report?.periods?.month?report?.periods?.previous:null,day=report?.periods?.yesterday;const ok=current?.status==='ok';const fields=[['fee','广告消耗'],['impression','展现量'],['click','点击量'],['interaction','互动量'],['message_consult','私信进线数'],['initiative_message','私信开口数'],['msg_leads_num','私信留资数']];return '<div class="panel"><h3>03 / 广告获客</h3><small>小红书聚光官方API · '+(ok?current.start+' 至 '+current.end:'等待报表同步')+'</small>'+cards(fields.map(([key,label])=>{const v=ok?current.metrics[key]:null;return [label,v===null||v===undefined?'—':(key==='fee'?'¥':'')+v.toLocaleString(),v,previous?.status==='ok'?previous.metrics[key]:null];}))+'<p>昨日广告消耗：'+(day?.status==='ok'?'¥'+day.metrics.fee:'待同步')+'</p><small>私信留资不等于有效客户；未提供指标不计为零。昨日离线数据最早上午10点产出。</small></div>';}
 
@@ -189,6 +208,29 @@ function xhsStyle(){return `<style>
 .xhs-card-stats{display:flex;flex-wrap:wrap;gap:18px;margin:12px 0}
 .xhs-card-stats strong{display:block;font-size:21px}
 .xhs-section{margin-top:12px}
+#growth-agent .xhs-view .tada-card{background:#fbfdff;border-top:3px solid #275b9b!important}
+#growth-agent .xhs-view .tada-hero{background:linear-gradient(140deg,#f5f9ff,#f6fbfa 88%);padding:20px}
+.tada-title{margin:14px 0 20px;gap:12px}
+#growth-agent .tada-title h2{font-size:clamp(25px,3.2vw,39px);letter-spacing:-.035em;margin:3px 0}
+#growth-agent .xhs-view .tada-kicker{color:#365e89;font-weight:700;letter-spacing:.05em}
+.tada-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:10px 0 14px}
+.tada-metric{min-width:0;border:1px solid #e2ebf4;background:#fff;border-radius:9px;padding:10px;display:grid;gap:5px;align-content:start}
+.tada-metric.redeemed{border-color:#d7ebe5}.tada-metric.ratio{border-color:#e7e5f4}
+.tada-metric strong{font-size:clamp(16px,2vw,27px);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.tada-metric.redeemed strong{color:#087264}.tada-metric.ratio strong{color:#584d83}
+.tada-change{color:#5a6b81;font-size:11px;line-height:1.45;font-weight:650}
+.tada-change.up{color:#087264}.tada-change.down{color:#a23336}
+.tada-footer{gap:6px}.tada-footer button,.tada-link{white-space:nowrap}
+.tada-link{background:#214e83;border-radius:7px;color:#fff!important;padding:7px 11px;font-weight:650;text-decoration:none}
+.tada-insight{display:flex;gap:10px;align-items:baseline;background:#eaf1f9;border:1px solid #dbe8f5;border-radius:8px;padding:9px 11px}
+.tada-insight strong{white-space:nowrap}.tada-insight span{line-height:1.6}
+.tada-legend{display:flex;flex-wrap:wrap;gap:14px;align-items:center;margin:5px 0}
+.tada-legend span:before{content:'';display:inline-block;width:8px;height:8px;border-radius:50%;background:#275b9b;margin-right:5px}
+.tada-legend span:nth-child(2):before{background:#087f70}
+.tada-chart-scroll{overflow-x:auto}.tada-chart{width:100%;min-width:460px;max-width:900px;display:block}.tada-chart text{font-size:11px;fill:#52667e}
+.tada-empty{background:#f6f8fb;border:1px dashed #d6e0ec;color:#52667e;border-radius:9px;padding:22px 12px;margin-top:8px}
+@media(max-width:600px){.tada-metrics{grid-template-columns:1fr}.tada-metric{padding:8px 10px}.tada-insight{display:block}.tada-insight span{display:block;margin-top:3px}}
+
 .management-review{background:#f1f5fb;border:1px solid #e0e8f2;border-radius:9px;padding:12px;margin:12px 0}
 .management-review h3{font-size:15px}
 .management-review ul{padding-left:18px;margin:6px 0}
@@ -234,7 +276,7 @@ function accountManagement(a,data){
 
 }
 function platformManagement(rows){
- const ready=rows.filter(({a})=>a[0]==='抖音'?douyinData(a):creatorFor(a)).length;
+ const ready=rows.filter(({a})=>accountDataDate(a)).length;
  return '<div class="management-overview"><span>运营账号 <strong>'+rows.length+'</strong></span><span>已有数据 <strong>'+ready+'</strong></span><span>待接入 <strong>'+(rows.length-ready)+'</strong></span><span>跨账号比较前先核对统计日期</span></div>';
 }
 function xhsList(rows){
@@ -244,17 +286,97 @@ function xhsList(rows){
   return '<div class="platform"><div class="row between"><h3>'+a[1]+'</h3><span class="xhs-status '+(data?'':'off')+'">'+(data?'已接入内容数据':ad?'仅广告已接入':'待接入数据')+'</span></div><p>负责人 · '+accountOwner(a)+'</p><small>'+(data?.data_end?'内容截至 '+data.data_end:'内容统计日期待核实')+'</small><div class="xhs-card-stats"><div><small>总粉丝</small><strong>'+fmt(data?.fans)+'</strong></div><div><small>本月发布</small><strong>'+fmt(creatorValue(a,'posts'))+'</strong></div><div><small>本月净增</small><strong>'+fmt(creatorValue(a,'net_followers'))+'</strong></div><div><small>本月广告费</small><strong>'+accountAdFee(a)+'</strong></div></div><div class="management-next">'+(data?.month?'可查看本月内容与增长，投放效果需结合客户归因。':'优先补齐本月内容和粉丝报表，确认统计覆盖。')+'</div><p><button data-account="'+i+'">查看经营分析 →</button></p></div>';
  }).join('')+'</div></div>';
 }
+function tadaMoney(cents){
+ return Number.isFinite(cents)?new Intl.NumberFormat('zh-CN',{style:'currency',currency:'CNY'}).format(cents/100):'—';
+}
+function tadaDelta(value,base,ratio=false){
+ if(!Number.isFinite(value)||!Number.isFinite(base))return '<span class="tada-change">暂无同期对比</span>';
+ const difference=value-base,trend=difference>0?'up':difference<0?'down':'flat';
+ if(!difference)return '<span class="tada-change flat">持平 · 较上月同期</span>';
+ const label=ratio?Math.abs(difference).toFixed(1)+' 个百分点':base>0?(Math.abs(difference)/base*100).toFixed(1)+'%':'由零起量';
+ return '<span class="tada-change '+trend+'">'+(difference>0?'↑ ':'↓ ')+label+' · 较上月同期</span>';
+}
+function tadaStatus(data){
+ if(!data)return '交易报表待接入';
+ return data.stale?'待更新 · 截至 '+data.data_end:'已更新 · 截至 '+data.data_end;
+}
+function tadaMetrics(data){
+ const current=data?.current||data?.partial_current,previous=data?.current?data?.previous:null;
+ return '<div class="tada-metrics">'+[
+  ['支付金额','sales','按支付日汇总'],
+  ['核销金额','redeemed','按核销日汇总'],
+  ['金额核销比','ratio','同期核销金额 ÷ 支付金额']
+ ].map(([label,key,note])=>{
+  const value=current?.[key],formatted=key==='ratio'?(Number.isFinite(value)?value.toFixed(1)+'%':'—'):tadaMoney(value);
+  return '<div class="tada-metric '+key+'"><small>'+label+'</small><strong>'+formatted+'</strong>'+tadaDelta(value,previous?.[key],key==='ratio')+'<small>'+note+'</small></div>';
+ }).join('')+'</div>';
+}
+function tadaTrend(data){
+ const days=data?.trend||[];
+ if(!days.length)return '<div class="tada-empty">上传交易日报后，这里会显示支付和核销的逐日走势。</div>';
+ const w=620,h=185,left=66,right=18,top=16,bottom=32;
+ const amounts=days.flatMap(d=>[d.sales,d.redeemed]).filter(Number.isFinite);
+ const max=Math.max(100,...amounts),step=Math.pow(10,Math.floor(Math.log10(max/4))),scale=Math.ceil(max/(4*step))*4*step;
+ const x=i=>left+(w-left-right)*(days.length===1?.5:i/(days.length-1)),y=n=>h-bottom-(h-top-bottom)*n/scale;
+ const axis=Array.from({length:5},(_,i)=>{
+  const value=scale*i/4,at=y(value);
+  return '<line x1="'+left+'" y1="'+at+'" x2="'+(w-right)+'" y2="'+at+'" stroke="#e4ebf2"/><text x="'+(left-7)+'" y="'+(at+4)+'" text-anchor="end">'+(value/100).toLocaleString('zh-CN',{maximumFractionDigits:2})+'</text>';
+ }).join('');
+ const labels=days.map((d,i)=>i===0||i===days.length-1||(days.length>7&&i%3===0)?'<text x="'+x(i)+'" y="'+(h-9)+'" text-anchor="middle">'+d.date.slice(5)+'</text>':'').join('');
+ const series=[['sales','支付金额','#275b9b'],['redeemed','核销金额','#087f70']].map(([key,label,color])=>{
+  const segments=[],points=[];
+  let connected=false;
+  days.forEach((day,i)=>{
+   const n=day[key];
+   if(!Number.isFinite(n)){connected=false;return;}
+   segments.push((connected?'L':'M')+x(i)+','+y(n));
+   points.push('<circle cx="'+x(i)+'" cy="'+y(n)+'" r="3" fill="'+color+'"><title>'+day.date+' '+label+' '+tadaMoney(n)+'</title></circle>');
+   connected=true;
+  });
+  return '<path d="'+segments.join(' ')+'" fill="none" stroke="'+color+'" stroke-width="2.5"/>'+points.join('');
+ }).join('');
+ return '<div class="tada-legend"><span>支付金额</span><span>核销金额</span><small>单位：元</small></div><div class="tada-chart-scroll"><svg class="tada-chart" viewBox="0 0 '+w+' '+h+'" role="img" aria-label="逐日支付金额与核销金额走势图">'+axis+labels+series+'</svg></div>'+
+  '<details><summary>查看逐日金额与核销比</summary><div class="scroll"><table><thead><tr><th>日期</th><th>支付金额</th><th>核销金额</th><th>金额核销比</th></tr></thead><tbody>'+days.slice().reverse().map(d=>'<tr><td>'+d.date+'</td><td>'+tadaMoney(d.sales)+'</td><td>'+tadaMoney(d.redeemed)+'</td><td>'+(Number.isFinite(d.ratio)?d.ratio.toFixed(1)+'%':'—')+'</td></tr>').join('')+'</tbody></table></div></details>';
+}
+function tadaReview(data){
+ const a=data?.current,b=data?.previous;
+ if(!data)return '待补 SUPER TADA 来客经营日报。请先确认账号或对应门店范围。';
+ if(!a)return data.partial_current?'现展示已上传 '+data.partial_current.days+' 天的支付与核销汇总；本月其余日期待补。':'等待本月交易日报。';
+ if(!b)return '上月相同天数的报表尚未齐全，当前只展示已核对的本月金额。';
+ if(a.sales>b.sales&&a.redeemed<b.redeemed)return '支付金额上升，核销金额下降。可按门店和团购商品排查到店使用、预约和退款情况。';
+ if(a.sales<b.sales&&a.redeemed>b.redeemed)return '支付金额下降，核销金额上升。可核对核销是否来自此前销售，再复盘近期团购流量和商品转化。';
+ if(a.sales>b.sales&&a.redeemed>b.redeemed)return '支付和核销金额均上升。结合金额核销比，复盘增长主要来自销售还是到店使用。';
+ if(a.sales<b.sales&&a.redeemed<b.redeemed)return '支付和核销金额均下降。可按商品和门店拆分，核对变化集中在哪些项目。';
+ return '结合支付金额、核销金额和金额核销比的同期变化复盘。';
+}
+function tadaCard(a,i){
+ const data=douyinData(a)?.commerce;
+ return '<article class="platform tada-card"><div class="row between"><div><small class="tada-kicker">抖音团购</small><h3>SUPER TADA</h3></div><span class="xhs-status '+(!data||data.stale?'off':'')+'">'+tadaStatus(data)+'</span></div><p class="muted">负责人 · '+accountOwner(a)+'　|　本月经营</p>'+tadaMetrics(data)+'<div class="row between tada-footer"><small>'+((data?.current||data?.partial_current)?(data.current||data.partial_current).start+' 至 '+(data.current||data.partial_current).end+(data.current?'':' · 已上传 '+data.partial_current.days+' 天'):'等待来客交易与核销日报')+'</small><button data-account="'+i+'">查看团购经营 →</button></div></article>';
+}
+function tadaDetail(a){
+ const content=douyinData(a),data=content?.commerce,period=data?.current||data?.partial_current;
+ return '<div class="xhs-view tada-view">'+xhsStyle()+
+ '<section class="panel tada-hero"><div class="row between"><button data-month-back>← 返回账号列表</button><span class="xhs-status '+(!data||data.stale?'off':'')+'">'+tadaStatus(data)+'</span></div>'+
+ '<div class="row between tada-title"><div><small class="tada-kicker">抖音生活服务 · 团购经营</small><h2>SUPER TADA</h2><p>负责人 · '+accountOwner(a)+'</p></div><a class="tada-link" href="/ops-sync?embedded=1#douyin-supertada" target="_blank" rel="noopener">上传经营日报 ↗</a></div>'+
+ '<div class="row between"><h3>'+ (data?.current?'本月经营':'本月已上传经营数据')+'</h3><small>'+(period?period.start+' 至 '+period.end:'本月统计待补齐')+'</small></div>'+tadaMetrics(data)+(data?.previous?'<p class="muted">对比区间 '+data.previous.start+' 至 '+data.previous.end+'</p>':'')+
+ '<div class="tada-insight"><strong>经营观察</strong><span>'+tadaReview(data)+'</span></div></section>'+
+ '<section class="panel"><div class="row between"><h3>支付与核销趋势</h3><small>最多显示最近 14 天</small></div>'+tadaTrend(data)+'</section>'+
+ '<section class="panel"><details><summary>创作数据与作品表现</summary><p class="muted">'+(content?.data_end?'创作报表截至 '+content.data_end:'创作报表待同步')+'</p>'+cards([['总粉丝',Number.isFinite(content?.fans)?content.fans.toLocaleString('zh-CN'):'—'],['报表播放量',Number.isFinite(content?.content?.metrics?.plays)?content.content.metrics.plays.toLocaleString('zh-CN'):'—'],['本月发布',content?.month?.posts??content?.month_partial?.posts??'—']])+contentRanking(content)+douyinDailyTable(content)+'</details></section>'+
+ '<section class="panel"><details><summary>数据来源与统计口径</summary><p>数据来自经确认的 SUPER TADA 来客逐日经营报表，按上海自然日汇总。支付按支付日，核销按核销日。跨期核销可能让金额核销比超过 100%，该比值与同批订单的核销率口径不同。支付金额为零时显示 —。</p><p>金额涨跌为相对变化，核销比变化用百分点。仅比较上月相同起始日、相同天数的完整报表。最后入库时间 '+(data?.updated_at?new Date(data.updated_at).toLocaleString('zh-CN',{timeZone:'Asia/Shanghai'}):'待导入')+'。</p></details></section></div>';
+}
+
 function douyinList(rows){
  const fmt=value=>Number.isFinite(value)?value.toLocaleString('zh-CN'):'—';
- return '<div class="xhs-view">'+xhsStyle()+'<div class="panel"><h2>内贸中心 / 抖音</h2><p class="muted">负责人、内容产出与账号增长</p>'+platformManagement(rows)+'<div class="platforms">'+rows.map(({a,i})=>{
+ return '<div class="xhs-view">'+xhsStyle()+'<div class="panel"><h2>内贸中心 / 抖音</h2><p class="muted">团购经营、内容产出与账号增长</p>'+platformManagement(rows)+'<div class="platforms">'+rows.map(({a,i})=>{
+  if(a[1]==='SUPER TADA')return tadaCard(a,i);
   const data=douyinData(a);
-  return '<div class="platform"><div class="row between"><h3>'+a[1]+'</h3><span class="xhs-status '+(data?'':'off')+'">'+(data?.daily?'报表已读取':data?'已读取部分数据':'尚未读取报表')+'</span></div><p>负责人 · '+accountOwner(a)+'</p><small>'+(data?.data_end?'报表截至 '+data.data_end:'统计日期待补充')+'</small><div class="xhs-card-stats"><div><small>本月发布</small><strong>'+fmt(data?.month?.posts)+'</strong></div><div><small>报表播放量</small><strong>'+fmt(data?.content?.metrics?.plays)+'</strong></div><div><small>总粉丝</small><strong>'+fmt(data?.fans)+'</strong></div></div><small>'+(data?.content?'播放统计 '+data.content.start+' 至 '+data.content.end:'内容数据尚未取得')+'</small><p><button data-account="'+i+'">查看账号数据 →</button></p></div>';
+  return '<div class="platform"><div class="row between"><h3>'+a[1]+'</h3><span class="xhs-status '+(data?'':'off')+'">'+(data?.daily?'报表已入库':data?'已读取部分数据':'尚未读取报表')+'</span></div><p>负责人 · '+accountOwner(a)+'</p><small>'+(accountDataDate(a)?accountCoverage(a):'统计日期待补充')+'</small><div class="xhs-card-stats"><div><small>本月发布（已采集）</small><strong>'+fmt(data?.month?.posts??data?.month_partial?.posts)+'</strong></div><div><small>报表播放量</small><strong>'+fmt(data?.content?.metrics?.plays??data?.content_partial?.plays)+'</strong></div><div><small>总粉丝</small><strong>'+fmt(data?.fans)+'</strong></div></div><small>'+(data?.content?'播放统计 '+data.content.start+' 至 '+(data.content_date||data.content.end):'内容数据尚未取得')+'</small><p><button data-account="'+i+'">查看账号数据 →</button></p></div>';
  }).join('')+'</div></div></div>';
 }
 function douyinDailyTable(data){
  if(!data?.daily?.length)return '';
  const columns=[['date','日期'],['posts','投稿量'],['plays','播放'],['likes','点赞'],['comments','评论'],['shares','分享'],['net_followers','净增粉丝'],['fans','总粉丝'],['new_followers','吸粉量'],['lost_followers','脱粉量'],['five_second_rate','5秒完播率'],['two_second_exit_rate','2秒跳出率'],['cover_click_rate','封面点击率'],['average_watch_seconds','平均播放时长']];
- return '<section class="panel xhs-section"><details><summary>展开逐日运营明细与指标口径</summary><p class="muted">'+data.daily[0].date+' 至 '+data.data_end+' · 按官方原始报表逐日展示</p><div class="scroll"><table><thead><tr>'+columns.map(([,label])=>'<th>'+label+'</th>').join('')+'</tr></thead><tbody>'+data.daily.slice().reverse().map(day=>'<tr>'+columns.map(([key,label])=>'<td data-label="'+label+'">'+(key==='date'?day.date:Number.isFinite(day[key])?day[key].toLocaleString('zh-CN')+(key.endsWith('_rate')?'%':key==='average_watch_seconds'?'秒':''):'—')+'</td>').join('')+'</tr>').join('')+'</tbody></table></div><p class="muted">月度数字仅在当月1日至昨日完整覆盖时显示，缺少的指标等待对应报表。互动负值按官方导出原样保留。</p></details></section>';
+ return '<section class="panel xhs-section"><details><summary>展开逐日运营明细与指标口径</summary><p class="muted">'+data.daily[0].date+' 至 '+data.data_end+' · 按官方原始报表逐日展示</p><div class="scroll"><table><thead><tr>'+columns.map(([,label])=>'<th>'+label+'</th>').join('')+'</tr></thead><tbody>'+data.daily.slice().reverse().map(day=>'<tr>'+columns.map(([key,label])=>'<td data-label="'+label+'">'+(key==='date'?day.date:Number.isFinite(day[key])?day[key].toLocaleString('zh-CN')+(key.endsWith('_rate')?'%':key==='average_watch_seconds'?'秒':''):'—')+'</td>').join('')+'</tr>').join('')+'</tbody></table></div><p class="muted">本月数字按已采集日期汇总，缺少的日期和指标保留空缺。互动负值按官方导出原样保留。</p></details></section>';
 }
 function douyinInsights(data){
  const days=(data?.daily||[]).filter(day=>Number.isFinite(day.plays));
@@ -276,15 +398,19 @@ function chartAxes(days,ceiling){
 }
 function xhsNoteRanking(data){
  const notes=data?.notes,esc=displayText,fmt=n=>Number.isFinite(n)?n.toLocaleString('zh-CN'):'—';
+ const day=86400000,today=Math.floor((Date.now()+28800000)/day)*day;
+ const start=new Date(today-30*day).toISOString().slice(0,10),end=new Date(today).toISOString().slice(0,10);
+ const items=notes?.items?.filter(item=>item.published_at&&item.published_at>=start&&item.published_at<end)||[];
+ if(notes&&!items.length)return '<section class="panel xhs-section"><h3>近 30 天发布 · 累计观看前 10 名</h3><p class="muted">当前快照没有符合日期范围的笔记。</p></section>';
  if(!notes?.items?.length)return '<section class="panel xhs-section"><h3>笔记效果前10名 · 观看量</h3><p class="muted">单篇笔记明细待采集。账号汇总已接入，但不能代替笔记排名；尚不显示每日新增排名。</p><small>展示目标：短标题、真实封面、发布时间、曝光、观看、点赞、评论、收藏、分享及涨粉。采集失败保留上次笔记快照。</small></section>';
- return '<section class="panel xhs-section"><h3>已采集笔记前10名 · 观看量</h3><p class="muted">快照 '+new Date(notes.at).toLocaleString('zh-CN',{timeZone:'Asia/Shanghai'})+' · '+esc(notes.scope)+'</p>'+(data.notes_status?.status==='pending'?'<p class="muted">本次笔记采集未完成，以下保留上次快照。</p>':'')+'<div class="scroll"><table class="ranking-table"><thead><tr><th>笔记</th><th>发布时间</th>'+['曝光','观看','点赞','评论','收藏','分享','涨粉'].map(t=>'<th>'+t+'</th>').join('')+'</tr></thead><tbody>'+notes.items.slice().sort((a,b)=>b.views-a.views).slice(0,10).map((item,i)=>'<tr><td><div class="work-identity">'+(item.cover_url?'<img class="work-cover" loading="lazy" referrerpolicy="no-referrer" src="'+esc(item.cover_url)+'" alt="笔记封面">':'<span class="work-cover empty">封面<br>待补</span>')+'<div><strong>#'+(i+1)+' '+esc(shortWorkTitle(item.title))+'</strong><details><summary>完整标题</summary><p>'+esc(item.title)+'</p></details>'+(item.item_url?'<a href="'+esc(item.item_url)+'" target="_blank" rel="noopener noreferrer">查看笔记 ↗</a>':'')+'</div></div></td><td>'+esc(item.published_at||'未取得')+'</td>'+['impressions','views','likes','comments','collects','shares','followers'].map(k=>'<td>'+fmt(item[k])+'</td>').join('')+'</tr>').join('')+'</tbody></table></div><small>高观看不等于有效获客；结合收藏、涨粉与CRM来源复盘。缺少逐日笔记数据时不计算每日排名变化。</small></section>';
+ return '<section class="panel xhs-section"><h3>近 30 天发布 · 累计观看前 10 名</h3><p class="muted">快照 '+new Date(notes.at).toLocaleString('zh-CN',{timeZone:'Asia/Shanghai'})+' · '+esc(notes.scope)+'</p>'+(data.notes_status?.status==='pending'?'<p class="muted">本次笔记采集未完成，以下保留上次快照。</p>':'')+'<div class="scroll"><table class="ranking-table"><thead><tr><th>笔记</th><th>发布时间</th>'+['曝光','观看','点赞','评论','收藏','分享','涨粉'].map(t=>'<th>'+t+'</th>').join('')+'</tr></thead><tbody>'+items.sort((a,b)=>b.views-a.views).slice(0,10).map((item,i)=>'<tr><td><div class="work-identity">'+(item.cover_url?'<img class="work-cover" loading="lazy" referrerpolicy="no-referrer" src="'+esc(item.cover_url)+'" alt="笔记封面">':'<span class="work-cover empty">封面<br>待补</span>')+'<div><strong>#'+(i+1)+' '+esc(shortWorkTitle(item.title))+'</strong><details><summary>完整标题</summary><p>'+esc(item.title)+'</p></details>'+(item.item_url?'<a href="'+esc(item.item_url)+'" target="_blank" rel="noopener noreferrer">查看笔记 ↗</a>':'')+'</div></div></td><td>'+esc(item.published_at||'未取得')+'</td>'+['impressions','views','likes','comments','collects','shares','followers'].map(k=>'<td>'+fmt(item[k])+'</td>').join('')+'</tr>').join('')+'</tbody></table></div><small>高观看不等于有效获客；结合收藏、涨粉与CRM来源复盘。缺少逐日笔记数据时不计算每日排名变化。</small></section>';
 }
-let douyinRankingMode='interval';
+let douyinRankingMode='cumulative';
 function contentRanking(data){
  if(data?.top?.interval?.status==='ok')return intervalContentRanking(data);
- if(!data?.top?.items?.length)return '<section class="panel xhs-section"><h3>视频效果前10名</h3><p class="muted">等待单条作品明细，接入后展示累计播放排名、短标题和已取得的真实封面。</p></section>';
+ if(!data?.top?.items?.length)return '<section class="panel xhs-section"><h3>近 30 天发布 · 累计播放前 10 名</h3><p class="muted">当前快照没有符合日期范围且取得播放量的作品。</p></section>';
  const fmt=value=>Number.isFinite(value)?value.toLocaleString('zh-CN'):'—',esc=displayText;
- return '<section class="panel xhs-section"><h3>视频效果前10名 · 累计播放</h3><p class="muted">快照 '+new Date(data.top.at).toLocaleString('zh-CN',{timeZone:'Asia/Shanghai'})+' · '+esc(data.top.scope)+'</p><small>先看高播放作品的选题与留资质量；累计排名不能代替每日新增排名。真实封面 '+data.top.items.filter(item=>item.cover_url).length+'/'+data.top.items.length+'。</small><div class="scroll"><table class="ranking-table"><thead><tr><th>排名 / 视频</th><th>发布时间</th><th>累计播放</th><th>点赞</th><th>评论</th><th>收藏</th><th>分享</th><th>涨粉</th><th>完播率</th></tr></thead><tbody>'+data.top.items.map((item,index)=>'<tr><td><div class="work-identity">'+(item.cover_url?'<img class="work-cover" src="'+esc(item.cover_url)+'" alt="视频封面" loading="lazy" referrerpolicy="no-referrer">':'<span class="work-cover empty">封面<br>待补</span>')+'<div><div class="work-title">#'+(index+1)+' '+(item.item_url?'<a href="'+esc(item.item_url)+'" target="_blank" rel="noopener noreferrer">'+esc(shortWorkTitle(item.title))+'</a>':esc(shortWorkTitle(item.title)))+'</div><details><summary>完整文案</summary><p>'+esc(item.title)+'</p></details></div></div></td><td>'+esc(item.published_at)+'</td><td>'+fmt(item.plays)+'</td><td>'+fmt(item.likes)+'</td><td>'+fmt(item.comments)+'</td><td>'+fmt(item.collects)+'</td><td>'+fmt(item.shares)+'</td><td>'+fmt(item.followers)+'</td><td>'+(Number.isFinite(item.completion)?(item.completion*100).toFixed(1)+'%':'—')+'</td></tr>').join('')+'</tbody></table></div></section>';
+ return '<section class="panel xhs-section"><h3>近 30 天发布 · 累计播放前 10 名</h3><p class="muted">快照 '+new Date(data.top.at).toLocaleString('zh-CN',{timeZone:'Asia/Shanghai'})+' · '+esc(data.top.scope)+'</p><small>先看高播放作品的选题与留资质量；累计排名不能代替每日新增排名。真实封面 '+data.top.items.filter(item=>item.cover_url).length+'/'+data.top.items.length+'。</small><div class="scroll"><table class="ranking-table"><thead><tr><th>排名 / 视频</th><th>发布时间</th><th>累计播放</th><th>点赞</th><th>评论</th><th>收藏</th><th>分享</th><th>涨粉</th><th>完播率</th></tr></thead><tbody>'+data.top.items.map((item,index)=>'<tr><td><div class="work-identity">'+(item.cover_url?'<img class="work-cover" src="'+esc(item.cover_url)+'" alt="视频封面" loading="lazy" referrerpolicy="no-referrer">':'<span class="work-cover empty">封面<br>待补</span>')+'<div><div class="work-title">#'+(index+1)+' '+(item.item_url?'<a href="'+esc(item.item_url)+'" target="_blank" rel="noopener noreferrer">'+esc(shortWorkTitle(item.title))+'</a>':esc(shortWorkTitle(item.title)))+'</div><details><summary>完整文案</summary><p>'+esc(item.title)+'</p></details></div></div></td><td>'+esc(item.published_at)+'</td><td>'+fmt(item.plays)+'</td><td>'+fmt(item.likes)+'</td><td>'+fmt(item.comments)+'</td><td>'+fmt(item.collects)+'</td><td>'+fmt(item.shares)+'</td><td>'+fmt(item.followers)+'</td><td>'+(Number.isFinite(item.completion)?(item.completion*100).toFixed(1)+'%':'—')+'</td></tr>').join('')+'</tbody></table></div></section>';
 }
 function intervalContentRanking(data){
  const interval=data.top.interval,incremental=typeof douyinRankingMode==='undefined'||douyinRankingMode!=='cumulative';
@@ -293,7 +419,7 @@ function intervalContentRanking(data){
  top.interval=null;
  let html=contentRanking({...data,top});
  const controls='<div class="row"><button data-dy-ranking="interval" aria-pressed="'+incremental+'">新增播放</button><button data-dy-ranking="cumulative" aria-pressed="'+!incremental+'">累计播放</button></div>';
- html=html.replace('<h3>视频效果前10名 · 累计播放</h3>','<div class="row between"><h3>'+(incremental?'新增播放前10名 · 两次采集之间':'视频效果前10名 · 累计播放')+'</h3>'+controls+'</div>');
+ html=html.replace('<h3>近 30 天发布 · 累计播放前 10 名</h3>','<div class="row between"><h3>'+(incremental?'新增播放前10名 · 两次采集之间':'近 30 天发布 · 累计播放前 10 名')+'</h3>'+controls+'</div>');
  if(incremental)html=html.replace('<th>累计播放</th>','<th>新增播放</th>').replace('先看高播放作品的选题与留资质量；累计排名不能代替每日新增排名。','播放为两次累计值之差，其他指标为本次累计值；不是官方昨日自然日排名。');
  return html;
 }
@@ -321,24 +447,99 @@ function adEfficiency(report){
  return '<section class="panel xhs-section"><h3>广告效率与成本变化</h3><small>统计范围 '+displayText(period.start)+' 至 '+displayText(period.end)+(period.stale?' · 原数据保留，待更新':'')+'</small><div class="cost-grid">'+fields.map(([title,value,old,money,cost])=>'<div class="cost-metric"><small>'+title+'</small><strong>'+(Number.isFinite(value)?(money?'¥':'')+value.toLocaleString('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:2})+(title==='点击率'?'%':''):'—')+'</strong>'+metricChange(value,old,{money,cost,unit:title==='点击率'?'个百分点':''})+'</div>').join('')+'</div><p class="muted">展现 '+(metrics.impression??'—')+' · 点击 '+(metrics.click??'—')+'。花费上涨只表示支出增加；点击成本下降仍需结合客户质量判断。点击率变化按相对百分比计算。</p><details><summary>对比口径与数据缺口</summary><p>'+(comparison?'本期 '+comparison[0].start+' 至 '+comparison[0].end+'；上期 '+comparison[1].start+' 至 '+comparison[1].end+'。':'未取得完整、等天数且未过期的上月同期报表，暂不计算涨跌。')+'</p><p>当前为账号汇总；逐条视频花费与点击率需要素材级报表及作品ID关联。有效客户成本与成交回报须先核实CRM来源，不用点击或私信替代。</p></details></section>';
 }
 function douyinAccountDetail(a){
+ if(a[1]==='SUPER TADA')return tadaDetail(a);
  const r=accountAdReport(a),data=douyinData(a),fmt=n=>Number.isFinite(n)?n.toLocaleString('zh-CN'):'—',fee=p=>p?.status==='ok'&&Number.isFinite(Number(p.metrics?.fee))?'¥'+Number(p.metrics.fee).toLocaleString('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:2})+(p.stale?'（待更新）':''):'—';
- return '<div class="xhs-view">'+xhsStyle()+'<div class="panel account-heading"><button data-month-back>← 返回账号列表</button><small style="display:block;margin-top:8px">抖音 / '+a[1]+'</small><h2>'+a[1]+'</h2><p>内容负责人 · '+accountOwner(a)+'</p><p class="muted">'+(data?.at?'运营数据读取于 '+new Date(data.at).toLocaleString('zh-CN',{timeZone:'Asia/Shanghai'})+(data.daily?'；官方报表截至 '+data.data_end+'。':'；目前仅总粉丝已核实。'):'该账号运营数据尚未核实。')+'</p><details><summary>数据来源与统计口径</summary><p>运营数据来自官方报表与网页快照；广告费用来自官方API；客户与成交按CRM账号归属核实后展示。</p></details><a href="/ops-sync">前往报表上传 →</a></div>'+accountManagement(a,data)+
- '<section class="panel xhs-section"><h3>01 / 账号增长与产出</h3>'+cards([['总粉丝',fmt(data?.fans)],['本月净增粉丝',fmt(data?.month?.net_followers)],['昨日净增粉丝',fmt(data?.yesterday?.net_followers)],['本月发布',fmt(data?.month?.posts)],['昨日发布',fmt(data?.yesterday?.posts)]])+'<small>'+(data?.fans_date?'总粉丝截至 '+data.fans_date+'。':'总粉丝为读取时点快照。')+' 本月指标只汇总当月1日至昨日完整覆盖的数据，近30天不直接作为本月。</small></section>'+
- '<section class="panel xhs-section"><h3>02 / 账号内容表现</h3>'+cards([['播放量',fmt(data?.content?.metrics?.plays)],['曝光量','—'],['点赞',fmt(data?.content?.metrics?.likes)],['评论',fmt(data?.content?.metrics?.comments)],['收藏','—'],['分享',fmt(data?.content?.metrics?.shares)],['主页访客','—']])+(data?.content?'<p class="muted">统计范围 '+data.content.start+' 至 '+data.content.end+' · 官方逐日报表汇总</p>':'')+'<p class="muted">平台未提供的指标标为不支持；未读到的指标保持未取得，不称为纯自然流量。</p><details><summary>单条作品明细</summary><p>采集目标：作品 ID、标题、发布时间、播放、点赞、评论、收藏、分享；完播率、平均观看时长等按后台实际支持情况读取。'+(data?.top?.items?.length?'已读取作品累计表现，见下方排行榜；真实封面 '+(data.top.items.filter(item=>item.cover_url).length)+'/'+data.top.items.length+'。逐日作品表现与作品ID尚待补齐。':'当前尚未取得已核实的作品报表。')+'</p></details></section>'+
+ return '<div class="xhs-view">'+xhsStyle()+'<div class="panel account-heading"><button data-month-back>← 返回账号列表</button><small style="display:block;margin-top:8px">抖音 / '+a[1]+'</small><h2>'+a[1]+'</h2><p>内容负责人 · '+accountOwner(a)+'</p><p class="muted">'+(data?.at?'运营数据读取于 '+new Date(data.at).toLocaleString('zh-CN',{timeZone:'Asia/Shanghai'})+(data.daily?'；官方报表截至 '+data.data_end+'。':'；目前仅总粉丝已核实。'):'该账号运营数据尚未核实。')+'</p><details><summary>数据来源与统计口径</summary><p>运营数据来自官方报表与网页快照；广告费用来自官方API；客户与成交按CRM账号归属核实后展示。</p></details><a href="/ops-sync">前往报表上传 →</a></div>'+accountManagement(a,data)+'<p class="muted">'+accountCoverage(a)+'</p>'+
+ '<section class="panel xhs-section"><h3>01 / 账号增长与产出</h3>'+cards([['总粉丝',fmt(data?.fans)],[data?.month_partial?'本月净增粉丝（已采集）':'本月净增粉丝',fmt(data?.month?.net_followers??data?.month_partial?.net_followers)],['昨日净增粉丝',fmt(data?.yesterday?.net_followers)],[data?.month_partial?'本月发布（已采集）':'本月发布',fmt(data?.month?.posts??data?.month_partial?.posts)],['昨日发布',fmt(data?.yesterday?.posts)]])+'<small>'+(data?.fans_date?'总粉丝截至 '+data.fans_date+'。':'总粉丝为读取时点快照。')+' 本月数值按已采集日期汇总，完整度见报表日期与覆盖。</small></section>'+
+ '<section class="panel xhs-section"><h3>02 / 账号内容表现</h3>'+cards([['播放量',fmt(data?.content?.metrics?.plays??data?.content_partial?.plays)],['曝光量','—'],['点赞',fmt(data?.content?.metrics?.likes??data?.content_partial?.likes)],['评论',fmt(data?.content?.metrics?.comments??data?.content_partial?.comments)],['收藏','—'],['分享',fmt(data?.content?.metrics?.shares??data?.content_partial?.shares)],['主页访客','—']])+(data?.content?'<p class="muted">统计范围 '+data.content.start+' 至 '+data.content.end+' · 官方逐日报表汇总</p>':'')+'<p class="muted">平台未提供的指标标为不支持；未读到的指标保持未取得，不称为纯自然流量。</p><details><summary>单条作品明细</summary><p>采集目标：作品 ID、标题、发布时间、播放、点赞、评论、收藏、分享；完播率、平均观看时长等按后台实际支持情况读取。'+(data?.top?.items?.length?'已读取作品累计表现，见下方排行榜；真实封面 '+(data.top.items.filter(item=>item.cover_url).length)+'/'+data.top.items.length+'。逐日作品表现与作品ID尚待补齐。':'当前尚未取得已核实的作品报表。')+'</p></details></section>'+
  douyinInsights(data)+contentRanking(data)+douyinDailyTable(data)+
  '<section class="panel xhs-section"><h3>03 / 广告投放</h3>'+cards([['昨日广告费',fee(r?.periods?.yesterday)],['本月广告费',fee(r?.periods?.month)],['年度广告费',fee(r?.periods?.year)]])+adEfficiency(r)+(r?'<p>官方 API · 数据截至 '+r.data_end+' · 更新于 '+new Date(r.checked_at).toLocaleString('zh-CN',{timeZone:'Asia/Shanghai'})+'</p><p class="muted">每日10:30、13:00、22:00同步；采集失败保留旧数据。</p>':'<p class="muted">该账号尚无已匹配的广告报表，其他账号广告费用不会并入。</p>')+(r?.history?.length?'<details><summary>月度广告支出</summary><table><thead><tr><th>月份</th><th>统计范围</th><th>广告费</th></tr></thead><tbody>'+r.history.map(h=>'<tr><td>'+h.month+'</td><td>'+h.start+' 至 '+h.end+'</td><td>'+fee(h)+'</td></tr>').join('')+'</tbody></table></details>':'')+'</section>'+
  '<section class="panel xhs-section"><h3>04 / 客户与成交</h3>'+cards([['有效客户','—'],['成交金额','—'],['有效客户成本','—'],['投入产出比','—']])+'<p class="muted">仅纳入 CRM 中已确认来自本抖音账号的客户与成交；来源未核实的不归入账号。广告转化次数、私信次数不等于有效客户。</p></section></div>';
 }
-function verifiedAccount(index){const a=accountRows[index];if(a[0]==='抖音')return douyinAccountDetail(a);const creator=creatorFor(a);if(creator)return creatorAccount(a,creator);if(a[0]!=='小红书')return '<div class="panel"><button data-month-back>返回账号列表</button><h2>'+a[0]+' / '+a[1]+'</h2></div>'+cards([['总粉丝','—'],['本月发布','—'],['昨日发布','—'],['本月净增粉丝','—'],['广告消耗','—'],['有效客户','—'],['成交金额','—']])+accountMonthComparison();const known=index===6&&hasFactorySnapshot();return '<div class="xhs-view">'+xhsStyle()+'<div class="panel account-heading"><button data-month-back>← 返回账号列表</button><small style="display:block;margin-top:8px">小红书 / '+a[1]+'</small><h2>'+(known?'亦玩游乐玩具工厂':a[1])+'</h2><div class="row between"><p>内容负责人 · '+accountOwner(a)+'</p><span class="xhs-status '+(known?'':'off')+'">'+(accountAdReport(a)?'聚光广告API已接入；内容单独同步':known?'更新于10月31日 · 手动读取':'尚未接入数据')+'</span></div></div><section class="panel xhs-section"><small>01 / GROWTH</small><h3>账号增长与产出</h3>'+cards([['总粉丝',known?'__XHS_FANS__':'—'],['本月发布',known?'12 条':'—'],['昨日发布',known?'1 条':'—'],['本月净增粉丝','—']])+accountMonthComparison()+(known?'<details><summary>查看近期粉丝变化与账号概览</summary><p>近30天新增121 · 流失19；近7天新增26 · 流失2。</p><p>10月24—30日：观看8,716 · 曝光1.7万 · 发布3条 · 互动137 · 主页访客154。</p><small>各统计周期分别展示，不合并为月度结果。</small></details>':'<p class="muted">接入后展示粉丝增长与内容产出。</p>')+'</section>'+(known?verifiedContent()+verifiedAds(accountAdReport(a)):'<section class="panel xhs-section"><small>02 / CONTENT</small><h3>内容表现</h3><p class="muted">尚未接入内容数据</p></section>'+(accountAdReport(a)?verifiedAds(accountAdReport(a)):'<section class="panel xhs-section"><small>03 / ADS</small><h3>广告获客</h3><p class="muted">尚未接入广告数据</p></section>')+'')+'<div class="xhs-notice">客户与成交：等待CRM数据；私信留资不等于有效客户，暂不计算成交回报。</div></div>';}
+const manualMetricLabels={fans:'总粉丝',posts:'发布量',impressions:'曝光量',views:'观看／播放',interactions:'互动量',collects:'收藏量',inquiries:'平台咨询／询盘',clicks:'点击量',visitors:'访客数',visits:'访问次数',submissions:'表单提交',whatsapp_clicks:'WhatsApp 点击',conversations:'新增对话',replies:'已回复对话',leads:'平台留资'};
+function manualPlatformKey([platform,account]){
+ const code={乐园号:'garden',工厂号:'factory',玩具号:'toy',IP号:'ip','SUPER TADA':'supertada',Yifunlife_play:'play',Yifunlife_Technicalsupport:'technical',渠道汇总:'channel'}[account];
+ const prefix={抖音:'',小红书:'xhs-',Instagram:'instagram-',Facebook:'facebook-',YouTube:'youtube-',TikTok:'tiktok-',阿里巴巴:'alibaba-',独立站:'website-',WhatsApp:'whatsapp-'}[platform];
+ return code&&prefix!==undefined?prefix+code:null;
+}
+function reportToday(){
+ return new Date(Date.now()+28800000).toISOString().slice(0,10);
+}
+function manualMetric(a,key){
+ const rows=manualPlatformReports[manualPlatformKey(a)]||[],today=reportToday();
+ const field=key==='net_followers'?'net_followers':key;
+ let values=rows.filter(row=>row.date<today&&Number.isFinite(row.daily[field]));
+ if(key!=='fans')values=values.filter(row=>key==='yesterday_net'?row.date===new Date(Date.parse(today)-86400000).toISOString().slice(0,10):row.date.startsWith(today.slice(0,7)));
+ if(!values.length)return null;
+ values=values.slice().sort((a,b)=>a.date.localeCompare(b.date));
+ return {value:key==='fans'?values.at(-1).daily[field]:values.reduce((sum,row)=>sum+row.daily[field],0),start:values[0].date,end:values.at(-1).date,days:values.length};
+}
+function accountDataDate(a){
+ const native=a[0]==='抖音'||a[0]==='视频号'?(a[0]==='视频号'?douyinCreators['wechat-video']:douyinData(a)):creatorFor(a);
+ return [native?.data_end,...(manualPlatformReports[manualPlatformKey(a)]||[]).map(row=>row.date)].filter(Boolean).sort().at(-1)||null;
+}
+function accountCoverage(a){
+ const native=a[0]==='抖音'?douyinData(a):creatorFor(a),period=native?.month_coverage?.posts,manual=manualMetric(a,'posts');
+ const end=accountDataDate(a);
+ if(!end)return '待上传报表';
+ const available=period||manual;
+ return '截至 '+displayText(end)+(native?.content_date?' · 内容 '+native.content_date:'')+(native?.fans_date?' · 粉丝 '+native.fans_date:'')+(available?' · 本月已采集 '+available.days+' 天':'');
+}
+function uploadedAds(a,annual=false){
+ const today=reportToday(),prefix=today.slice(0,annual?4:7);
+ return (manualPlatformReports[manualPlatformKey(a)]||[]).filter(row=>row.date<today&&row.date.startsWith(prefix)&&Number.isFinite(row.ad.spend)&&row.ad.currency);
+}
+function uploadedAdTotal(foreign,annual=false){
+ const groups=new Map(),seen=new Set(),period=annual?'year':'month',prefix=reportToday().slice(0,annual?4:7);
+ for(const a of accountRows.filter(a=>foreignPlatforms.includes(a[0])===foreign)){
+  const report=accountAdReport(a),official=report?.periods?.[period];
+  if(official?.status==='ok'&&!official.stale&&official.start?.startsWith(prefix)&&Number.isFinite(official.metrics?.fee)){
+   if(seen.has(report.id))continue;
+   seen.add(report.id);
+   const currency=report.currency||'CNY';
+   groups.set(currency,(groups.get(currency)||0)+Math.round(official.metrics.fee*100));
+  }else for(const row of uploadedAds(a,annual))groups.set(row.ad.currency,(groups.get(row.ad.currency)||0)+row.ad.spend);
+ }
+ return groups.size?[...groups].map(([currency,cents])=>displayText(currency)+' '+(cents/100).toLocaleString('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:2})).join('<br>')+'<small>已采集部分</small>':'待上传广告日报';
+}
+function uploadedAccountSummary(a){
+ const rows=manualPlatformReports[manualPlatformKey(a)]||[];
+ if(!rows.length)return '';
+ const stats=Object.entries(manualMetricLabels).map(([key,label])=>{
+  const metric=manualMetric(a,key);
+  return metric?'<div class="summary-cell"><small>'+(key==='fans'?label:'本月'+label)+'</small><strong>'+metric.value.toLocaleString('zh-CN')+'</strong><small>'+metric.start+' 至 '+metric.end+' · '+metric.days+' 天</small></div>':'';
+ }).join('');
+ const written=Math.max(...rows.map(row=>row.uploaded_at||0));
+ return '<section class="panel"><h3>已上传经营报表</h3>'+(written?'<p class="muted">最近入库 '+new Date(written).toLocaleString('zh-CN',{timeZone:'Asia/Shanghai'})+'</p>':'')+'<small>'+accountCoverage(a)+' · 粉丝为最新快照，其余按本月已上传日期汇总。</small><div class="summary-grid">'+stats+'</div><p>本月广告花费 '+accountAdFee(a)+'</p></section>';
+}
+function manualSupplement(a,showEmpty=false){
+ const key=manualPlatformKey(a),rows=manualPlatformReports[key]||[];
+ if(!key||(!rows.length&&!showEmpty))return '';
+ const id=a[0]==='抖音'?'douyin-'+key:key;
+ const format=value=>Number.isFinite(value)?value.toLocaleString('zh-CN'):'—';
+ const items=metrics=>Object.entries(metrics).filter(([name])=>manualMetricLabels[name]).map(([name,value])=>manualMetricLabels[name]+' '+format(value)).join(' · ')||'—';
+ const result=rows.length?'<div class="scroll"><table><thead><tr><th>统计日</th><th>经营指标</th><th>广告指标</th></tr></thead><tbody>'+rows.slice(0,14).map(({date,daily,ad})=>{
+  const ctr=ad.impressions>0&&Number.isFinite(ad.clicks)?' · 点击率 '+(100*ad.clicks/ad.impressions).toFixed(2)+'%':'';
+  const spend=Number.isFinite(ad.spend)?displayText(ad.currency)+' '+(ad.spend/100).toLocaleString('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:2})+' · ':'';
+  return '<tr><td>'+displayText(date)+'</td><td>'+items(daily)+'</td><td>'+spend+items(ad)+ctr+'</td></tr>';
+ }).join('')+'</tbody></table></div>':'<p class="muted">等待上传该账号的首份报表。</p>';
+ return uploadedAccountSummary(a)+'<section class="panel xhs-section"><div class="row between"><h3>运营补报</h3><a href="/ops-sync?embedded=1#'+id+'">下载模板 / 上传报表 →</a></div><small>按自然日展示，广告按原币。补报数据单独列示，平台咨询与留资按报表口径。</small>'+result+'</section>';
+}
+function verifiedAccount(index){const a=accountRows[index];if(a[0]==='抖音')return douyinAccountDetail(a)+manualSupplement(a);if(a[0]==='视频号'){
+ const data=douyinCreators['wechat-video'];
+ return '<div class="xhs-view">'+xhsStyle()+'<section class="panel"><button data-month-back>返回账号列表</button><h2>视频号 / 亦玩集团</h2><p>官方 CSV 上传后更新。作品榜仅覆盖已上传明细，播放口径和可见权限待核实。</p><a href="/#ops-sync">打开报表上传</a></section>'+contentRanking(data)+douyinDailyTable(data)+'</div>';
+ }const creator=creatorFor(a);if(creator)return creatorAccount(a,creator)+manualSupplement(a);if(foreignPlatforms.includes(a[0]))return '<div class="panel"><button data-month-back>← 返回账号列表</button><h2>'+a[0]+' / '+a[1]+'</h2></div>'+manualSupplement(a,true);if(a[0]!=='小红书')return '<div class="panel"><button data-month-back>返回账号列表</button><h2>'+a[0]+' / '+a[1]+'</h2></div>'+cards([['总粉丝','—'],['本月发布','—'],['昨日发布','—'],['本月净增粉丝','—'],['广告消耗','—'],['有效客户','—'],['成交金额','—']])+accountMonthComparison();const known=index===6&&hasFactorySnapshot();return '<div class="xhs-view">'+xhsStyle()+'<div class="panel account-heading"><button data-month-back>← 返回账号列表</button><small style="display:block;margin-top:8px">小红书 / '+a[1]+'</small><h2>'+(known?'亦玩游乐玩具工厂':a[1])+'</h2><div class="row between"><p>内容负责人 · '+accountOwner(a)+'</p><span class="xhs-status '+(known?'':'off')+'">'+(accountAdReport(a)?'聚光广告API已接入；内容单独同步':known?'更新于10月31日 · 手动读取':'尚未接入数据')+'</span></div></div><section class="panel xhs-section"><small>01 / GROWTH</small><h3>账号增长与产出</h3>'+cards([['总粉丝',known?'__XHS_FANS__':'—'],['本月发布',known?'12 条':'—'],['昨日发布',known?'1 条':'—'],['本月净增粉丝','—']])+accountMonthComparison()+(known?'<details><summary>查看近期粉丝变化与账号概览</summary><p>近30天新增121 · 流失19；近7天新增26 · 流失2。</p><p>10月24—30日：观看8,716 · 曝光1.7万 · 发布3条 · 互动137 · 主页访客154。</p><small>各统计周期分别展示，不合并为月度结果。</small></details>':'<p class="muted">接入后展示粉丝增长与内容产出。</p>')+'</section>'+(known?verifiedContent()+verifiedAds(accountAdReport(a)):'<section class="panel xhs-section"><small>02 / CONTENT</small><h3>内容表现</h3><p class="muted">尚未接入内容数据</p></section>'+(accountAdReport(a)?verifiedAds(accountAdReport(a)):'<section class="panel xhs-section"><small>03 / ADS</small><h3>广告获客</h3><p class="muted">尚未接入广告数据</p></section>')+'')+'<div class="xhs-notice">客户与成交：等待CRM数据；私信留资不等于有效客户，暂不计算成交回报。</div></div>';}
 
-function productionView(){if(state.tab===103)return '<div class="panel" style="padding:0;overflow:hidden"><iframe title="运营数据同步区 · 抖音报表上传" src="/ops-sync?embedded=1" style="display:block;width:100%;min-height:1100px;border:0"></iframe></div>';if(monthlyAccount!==null&&[0,1,2].includes(state.tab))return verifiedAccount(monthlyAccount);if(state.tab===0)return marketingDashboard();if(state.tab===1||state.tab===2){const chosen=state.tab===1?selectedForeign:selectedDomestic;const rows=accountRows.map((a,i)=>({a,i})).filter(x=>(x.i>=9)===(state.tab===1)&&(!chosen||x.a[0]===chosen));if(!chosen&&state.tab===2)return douyinList(rows.filter(x=>x.a[0]==='抖音'))+xhsList(rows.filter(x=>x.a[0]==='小红书'));if(chosen==='小红书')return xhsList(rows);if(chosen==='抖音')return douyinList(rows);return '<div class="panel"><h2>'+tabs[state.tab]+(chosen?' / '+chosen:'')+'</h2><small>正式数据 · 未核实账号待同步</small><div class="platforms">'+rows.map(x=>'<div class="platform"><h3>'+x.a[0]+' / '+x.a[1]+'</h3><p>'+(x.i===6?'亦玩游乐玩具工厂 · 总粉丝__XHS_FANS__':'待同步')+'</p><button data-account="'+x.i+'">查看账号数据</button></div>').join('')+'</div></div>';}if(state.tab===7&&window.renderCrmCustomers)return window.renderCrmCustomers();if(state.tab===6)return crmSummaryPanel();if([5,101,102].includes(state.tab))return pendingPanel(tabs[state.tab]||'业务数据');return null;}
+function productionView(){if(state.tab===103)return '<div class="panel" style="padding:0;overflow:hidden"><iframe title="运营数据同步区 · 下载模板与上传" src="/ops-sync?embedded=1" style="display:block;width:100%;min-height:700px;border:0"></iframe></div>';if(monthlyAccount!==null&&[0,1,2].includes(state.tab))return verifiedAccount(monthlyAccount);if(state.tab===0)return marketingDashboard();if(state.tab===1||state.tab===2){const chosen=state.tab===1?selectedForeign:selectedDomestic;const rows=accountRows.map((a,i)=>({a,i})).filter(x=>foreignPlatforms.includes(x.a[0])===(state.tab===1)&&(!chosen||x.a[0]===chosen));if(!chosen&&state.tab===2)return douyinList(rows.filter(x=>x.a[0]==='抖音'))+xhsList(rows.filter(x=>x.a[0]==='小红书'));if(chosen==='小红书')return xhsList(rows);if(chosen==='抖音')return douyinList(rows);return '<div class="panel"><h2>'+tabs[state.tab]+(chosen?' / '+chosen:'')+'</h2><small>正式数据 · 未核实账号待同步</small><div class="platforms">'+rows.map(x=>'<div class="platform"><h3>'+x.a[0]+' / '+x.a[1]+'</h3><p>'+(manualPlatformReports[manualPlatformKey(x.a)]?.[0]?'补报数据截至 '+displayText(manualPlatformReports[manualPlatformKey(x.a)][0].date):'待上传报表')+'</p><button data-account="'+x.i+'">查看账号数据</button></div>').join('')+'</div></div>';}if(state.tab===7&&window.renderCrmCustomers)return window.renderCrmCustomers();if(state.tab===6)return crmSummaryPanel();if([5,101,102].includes(state.tab))return pendingPanel(tabs[state.tab]||'业务数据');return null;}
 async function refreshDouyinData(){
  try{
   const response=await fetch('/api/ops-sync/snapshots');
   if(!response.ok)return;
   const data=await response.json();
   Object.assign(douyinCreators,data.accounts);
-  if(state.tab===0||state.tab===2)render();
+  Object.assign(manualPlatformReports,data.manual||{});
+  if(data.creators)Object.assign(creatorData,data.creators);
+  if([0,1,2].includes(state.tab))render();
  }catch{}
 }
 window.addEventListener('message',event=>{
@@ -347,13 +548,15 @@ window.addEventListener('message',event=>{
  if(frame&&event.source===frame.contentWindow)void refreshDouyinData();
 });
 window.addEventListener('focus',()=>void refreshDouyinData());
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)void refreshDouyinData();});
+setInterval(()=>{if(!document.hidden)void refreshDouyinData();},60000);
 window.addEventListener('ops:open',()=>{state.tab=103;monthlyAccount=null;render();root.querySelector('[data-ops-sync]')?.classList.add('active');});window.addEventListener('hashchange',()=>{if(location.hash==='#ops-sync')window.dispatchEvent(new Event('ops:open'));});if(location.hash==='#ops-sync')state.tab=103;
 function render(){root.querySelector('#ga-nav').innerHTML=tabs.map((s,i)=>'<button class="cursor-interaction '+(i===state.tab?'active':'')+'" data-go="'+i+'" aria-pressed="'+(i===state.tab)+'" '+(i===1?'aria-expanded="'+foreignOpen+'"':i===2?'aria-expanded="'+domesticOpen+'"':i===6?'aria-expanded="'+analysisOpen+'"':'')+'>'+s+(i===1?(foreignOpen?' ▾':' ▸'):i===2?(domesticOpen?' ▾':' ▸'):i===6?(analysisOpen?' ▾':' ▸'):'')+'</button>'+(i===1&&foreignOpen?'<div class="ga-submenu">'+foreignPlatforms.map((name,k)=>'<button class="cursor-interaction '+(selectedForeign===name?'selected':'')+'" data-foreign="'+k+'">'+name+'</button>').join('')+'</div>':'')+(i===2&&domesticOpen?'<div class="ga-submenu">'+domesticPlatforms.map((name,k)=>'<button class="cursor-interaction '+(selectedDomestic===name?'selected':'')+'" data-domestic="'+k+'">'+name+'</button>').join('')+'</div>':'')+(i===6&&analysisOpen?'<div class="ga-submenu">'+['分析工作台','月度报表','全账号运营对比'].map(name=>'<button class="cursor-interaction '+(analysisSection===name?'selected':'')+'" data-analysis-section="'+name+'">'+name+'</button>').join('')+'</div>':'')).join('');let html='';const m=metrics();if(state.tab===0){html=marketingDashboard();}
 if(state.tab===101){html='<div class="panel"><div class="row between"><h3>渠道接入 · 模拟收到一位新客户</h3><span class="badge">保留原始来源</span></div><div class="row">'+channels.map((c,i)=>'<button data-add="'+i+'">＋ '+c.name+'</button>').join('')+'</div><small>独立站和 WhatsApp 客户可经群汇总；群读取能力待确认。中转群不覆盖原始获客来源。</small></div><div class="panel"><div class="row between"><h3>分配规则</h3><button class="primary" data-distribute>平均分配并模拟同步 CRM</button></div><div class="row">'+agents.map(n=>'<button data-pause="'+n+'">'+n+' · '+(state.paused.includes(n)?'暂停接收':'接收中')+' · '+state.leads.filter(l=>l.owner===n).length+' 位</button>').join('')+'</div><small>演示按本批次已分配数量补齐；正式版可按当日新增分配。重复客户归原业务员，需接入真实身份去重。</small></div><div class="panel"><h3>统一客户池</h3>'+customerTable(state.leads,false)+'</div>';}
 if(state.tab===102){const rows=state.leads.filter(l=>l.owner===state.who);html='<div class="panel"><div class="row between"><h3>业务员工作台</h3><label>业务员 <select id="ga-who">'+agents.map(n=>'<option '+(n===state.who?'selected':'')+'>'+n+'</option>').join('')+'</select></label></div><p>本批次分配 '+rows.length+' 位 · 待联系 '+rows.filter(l=>l.stage==='新客户').length+' 位</p><small>修改标签、成交金额或反馈原因，经营总览和运营记录随之更新。</small>'+customerTable(rows,true)+'</div><div class="panel"><h3>运营可见 · 最近变化</h3>'+state.logs.slice(-6).reverse().map(l=>'<div class="log">'+l+'</div>').join('')+'</div>';}
 if(state.tab===6){html=analysisSection==='分析工作台'?analysisDashboard():analysisSection==='全账号运营对比'?accountComparison():monthlyReportCenter().replace('月度报表 · 全账号运营对比',analysisSection);}
 if(state.tab===5){html='<div class="panel"><div class="row between"><h3>投放助手 · 人工审核模式</h3><span class="badge">不连接广告账户</span></div><p>固定总预算，小幅调整；观察成交成本与客户质量后，再决定下一步。</p></div><div class="panel"><h3>下一轮日预算实验</h3><div class="scroll"><table><thead><tr><th>广告系列</th><th>当前日预算</th><th>草案日预算</th><th>状态</th></tr></thead><tbody><tr><td>Google 搜索</td><td>¥300</td><td>'+(state.plan?'¥330':'—')+'</td><td rowspan="2">'+(state.applied?'已模拟执行':state.plan?'待审核':'尚未生成')+'</td></tr><tr><td>Google 展示</td><td>¥200</td><td>'+(state.plan?'¥170':'—')+'</td></tr></tbody></table></div><p class="muted">总日预算 ¥500；示例观察期 7 天；保留暂停和回退入口。历史花费不随未来预算变化。</p><div class="row" style="margin-top:16px">'+(!state.plan?'<button class="primary" data-plan>生成实验草案</button>':!state.applied?'<button class="primary" data-apply>审核通过并模拟执行</button><button data-cancel>取消草案</button>':'<button data-rollback>停止实验并模拟恢复预算</button>')+'</div></div><div class="panel"><h3>操作记录</h3>'+state.logs.slice(-6).reverse().map(l=>'<div class="log">'+l+'</div>').join('')+'</div>';}
-if(state.tab===1||state.tab===2){const foreign=state.tab===1;const rows=accountRows.map((a,i)=>({a,i})).filter(x=>(x.i>=9)===foreign);html='<div class="panel"><h2>'+tabs[state.tab]+'</h2><small>平台账号运营 · 参考网站测试数据快照</small><div class="platforms">'+[...new Set(rows.map(x=>x.a[0]))].map(platform=>'<div class="platform"><h3>'+platform+'</h3>'+rows.filter(x=>x.a[0]===platform).map(x=>'<button data-account="'+x.i+'">'+x.a[1]+'</button>').join('')+'</div>').join('')+'</div><div id="ga-account-detail" class="account-detail" hidden aria-live="polite"></div></div>';}
+if(state.tab===1||state.tab===2){const foreign=state.tab===1;const rows=accountRows.map((a,i)=>({a,i})).filter(x=>foreignPlatforms.includes(x.a[0])===foreign);html='<div class="panel"><h2>'+tabs[state.tab]+'</h2><small>平台账号运营 · 参考网站测试数据快照</small><div class="platforms">'+[...new Set(rows.map(x=>x.a[0]))].map(platform=>'<div class="platform"><h3>'+platform+'</h3>'+rows.filter(x=>x.a[0]===platform).map(x=>'<button data-account="'+x.i+'">'+x.a[1]+'</button>').join('')+'</div>').join('')+'</div><div id="ga-account-detail" class="account-detail" hidden aria-live="polite"></div></div>';}
 if(state.tab===3||state.tab===4){html='<div class="panel"><h2>'+tabs[state.tab]+'</h2><p class="muted">功能待配置，后续按你的流程逐步调整。</p></div>';}
 if((state.tab===1&&selectedForeign)||(state.tab===2&&selectedDomestic)){const chosen=state.tab===1?selectedForeign:selectedDomestic;const rows=accountRows.map((a,i)=>({a,i})).filter(x=>x.a[0]===chosen);html='<div class="panel"><small>'+tabs[state.tab]+' / '+chosen+'</small><h2>'+chosen+'</h2><p class="muted">单账号月度经营 · 2026 年 10 月 · 以下为独立演示数据</p>'+(rows.length?'<div class="platforms">'+rows.map(x=>['阿里巴巴','独立站','WhatsApp'].includes(x.a[0])?'<div class="platform"><h3>'+x.a[1]+'</h3><p>专属月度指标 · 待接入</p><button data-account="'+x.i+'">查看月度经营明细 →</button></div>':'<div class="platform"><h3>'+x.a[1]+'</h3><small>负责人：Mark Fang · 本月</small><div class="entry">发布 4 条 · 曝光 '+(106000*(x.i%3+1)).toLocaleString()+'</div><div class="entry">有效客户 '+35*(x.i%3+1)+' 位<br>广告花费 '+money(3000*(x.i%3+1))+'</div><div class="entry">成交 4 位 · '+money(62000)+'</div><button data-account="'+x.i+'">查看月度经营明细 →</button></div>').join('')+'</div><div id="ga-account-detail" class="account-detail" hidden aria-live="polite"></div>':'<p class="entry">暂未配置账号，后续逐步完善。</p>')+'</div>';}
 if(state.tab===7){html=customerHandoff();}if(state.tab===1&&['阿里巴巴','独立站','WhatsApp'].includes(selectedForeign)){const direct=accountRows.find(x=>x[0]===selectedForeign);if(direct)html=specialistDashboard(direct).replace('<button data-month-back>返回账号列表</button>','');}if(state.tab===2&&selectedDomestic==='视频号'&&monthlyAccount===null){const previousAccount=monthlyAccount;monthlyAccount=accountRows.findIndex(x=>x[0]==='视频号');html=monthlyDashboard().replace('<button data-month-back>返回账号列表</button>','');monthlyAccount=previousAccount;}if(monthlyAccount!==null&&(state.tab===0||state.tab===1||state.tab===2)){html=monthlyDashboard();}if(state.tab===3&&window.renderEditing)html=window.renderEditing();if(state.tab===4&&window.renderEditingDelivery)html=window.renderEditingDelivery();const production=productionView();if(production!==null)html=production;root.querySelector('#ga-body').innerHTML=html;void refreshCrmSummary();}

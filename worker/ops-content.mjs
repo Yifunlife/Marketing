@@ -1,4 +1,4 @@
-async function opsImportContent(row,rows,env){
+function opsParseContent(rows){
  const index=rows.findIndex(cells=>cells.includes('作品名称')&&cells.includes('发布时间'));
  if(index<0)throw Error('未找到作品名称和发布时间，当前支持官方“作品列表导出”报表。');
  const header=rows[index],column=Object.fromEntries(header.map((name,i)=>[name,i])),items=[],seen=new Set();
@@ -21,6 +21,10 @@ async function opsImportContent(row,rows,env){
   items.push(item);
  }
  if(!items.length||items.length>5000)throw Error('作品明细应包含1至5000条记录。');
+ return items;
+}
+async function opsImportContent(row,rows,env,verifiedWorks){
+ const items=verifiedWorks||opsParseContent(rows);
  const statements=[];
  for(let i=0;i<items.length;i+=5){
   const chunk=items.slice(i,i+5);
@@ -34,7 +38,7 @@ async function opsImportContent(row,rows,env){
 async function opsContentSummary(key,env){
  const latest=await env.DB.prepare("SELECT id,uploaded_at,review_message FROM creator_report_uploads WHERE account_key=? AND report_kind='works' AND status='imported' ORDER BY uploaded_at DESC,id DESC LIMIT 1").bind(key).first();
  if(!latest)return null;
- const items=(await env.DB.prepare('SELECT i.title,i.published_at,i.plays,i.likes,i.comments,i.shares,i.collects,i.followers,i.completion,i.cover_url,i.item_url,c.sha256 AS cover_sha256,c.observed_at AS cover_observed_at FROM creator_content_items i LEFT JOIN creator_content_covers c ON c.account_key=i.account_key AND c.item_key=i.item_key WHERE i.account_key=? AND i.report_id=? ORDER BY i.plays DESC,i.published_at DESC LIMIT 10').bind(key,latest.id).all()).results||[];
+ const items=(await env.DB.prepare(`SELECT i.title,i.published_at,i.plays,i.likes,i.comments,i.shares,i.collects,i.followers,i.completion,i.cover_url,i.item_url,c.sha256 AS cover_sha256,c.observed_at AS cover_observed_at FROM creator_content_items i LEFT JOIN creator_content_covers c ON c.account_key=i.account_key AND c.item_key=i.item_key WHERE i.account_key=? AND i.report_id=? AND i.plays IS NOT NULL AND i.published_at>=date('now','+8 hours','-30 days') AND i.published_at<date('now','+8 hours') ORDER BY i.plays DESC,i.published_at DESC,i.item_key LIMIT 10`).bind(key,latest.id).all()).results||[];
  for(const item of items)if(item.cover_sha256)item.cover_url='/api/ops-sync/douyin-'+encodeURIComponent(key)+'/covers?sha='+item.cover_sha256;
  return {at:latest.uploaded_at,scope:latest.review_message,items,interval:await opsContentInterval(key,env)};
 }

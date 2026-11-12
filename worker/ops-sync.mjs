@@ -3,29 +3,81 @@ const opsSyncTargets={
  'douyin-factory':{platform:'抖音',label:'工厂号',url:'https://creator.douyin.com/creator-micro/home',origin:'https://creator.douyin.com',identity:'shanghaiyiwan',name:'亦玩游乐设备工厂',key:'factory'},
  'douyin-toy':{platform:'抖音',label:'玩具号',url:'https://creator.douyin.com/creator-micro/home',origin:'https://creator.douyin.com',identity:'85639035334',name:'亦玩游乐玩具工厂',key:'toy'},
  'douyin-supertada':{platform:'抖音',label:'SUPER TADA',url:'https://creator.douyin.com/creator-micro/home',origin:'https://creator.douyin.com',identity:null,name:'SUPER TADA',key:'supertada'},
- 'wechat-video':{platform:'微信视频号',label:'账号待核实',url:'https://channels.weixin.qq.com/',origin:'https://channels.weixin.qq.com'},
+ 'douyin-ip':{platform:'抖音',label:'IP号',url:'https://creator.douyin.com/creator-micro/home',origin:'https://creator.douyin.com',identity:'47324783989',name:'亦玩游乐方星球',key:'ip'},
+ 'wechat-video':{platform:'微信视频号',label:'亦玩集团',reportKey:'wechat-video',url:'https://channels.weixin.qq.com/',origin:'https://channels.weixin.qq.com'},
  'xhs-garden':{platform:'小红书',label:'乐园号',xhs:'garden'},'xhs-toy':{platform:'小红书',label:'玩具号',xhs:'toy'},'xhs-factory':{platform:'小红书',label:'工厂号',xhs:'factory'},'xhs-supertada':{platform:'小红书',label:'SUPER TADA',xhs:'supertada'}
 };
-function opsSyncAllowed(user,write=false){if(!user||user.must_change)return false;if(user.role==='owner')return true;let permissions;try{permissions=Array.isArray(user.permissions)?user.permissions:JSON.parse(user.permissions||'[]');}catch{return false;}return ['manager','operator',...(write?[]:['viewer'])].includes(user.role)&&Array.isArray(permissions)&&permissions.includes(2);}
+function opsSyncAllowed(user,write=false,permission=2){if(!user||user.must_change)return false;if(user.role==='owner')return true;let permissions;try{permissions=Array.isArray(user.permissions)?user.permissions:JSON.parse(user.permissions||'[]');}catch{return false;}return ['manager','operator',...(write?[]:['viewer'])].includes(user.role)&&Array.isArray(permissions)&&permissions.includes(permission);}
 
 const opsScanKey=(id,kind)=>'ops_scan:'+id+':'+kind;
+function opsResolveReportTarget(target,id){
+ return {...target,key:target.key||target.reportKey||id,uploadId:id};
+}
+function opsShanghaiReportDay(now=Date.now()){
+ return new Date(now+28800000).toISOString().slice(0,10);
+}
+async function opsCloudReportStatus(env,target,kind,day=opsShanghaiReportDay(),collection){
+ if(target.xhs&&kind==='platform-daily'){
+  const creator=creatorTarget(target.xhs);
+  const latest=collection===undefined?await xget(creatorSetting(creator,'collection'),env):collection;
+  if(latest?.ok===true&&latest.as_of===day)return new Date(Date.parse(day)-86400000).toISOString().slice(0,10);
+ }
+ if(kind!=='advertising')return null;
+ let account;
+ if(target.xhs){
+  const bindings=await xget('advertiser_bindings',env)||{};
+  const id=Object.hasOwn(bindings,target.xhs)?bindings[target.xhs]:{factory:'332719',garden:'136547'}[target.xhs];
+  if(id)account=(await xget('reports',env))?.accounts?.find(row=>String(row.id)===String(id));
+ }else if(target.key==='garden'){
+  account=(await xget('oe:reports',env))?.accounts?.find(row=>row.target==='garden');
+ }
+ const yesterday=new Date(Date.parse(day)-86400000).toISOString().slice(0,10),report=account?.periods?.yesterday;
+ return report?.status==='ok'&&!report.stale&&report.start===yesterday&&report.end===yesterday?yesterday:null;
+}
 async function opsSyncApi(req,env,user){
  const url=new URL(req.url),parts=url.pathname.split('/').filter(Boolean),id=parts[2],action=parts[3],write=req.method!=='GET';
- if(!opsSyncAllowed(user,write))return xjson({error:'请使用有内贸中心权限的运营账号登录'},403);
+ const domestic=opsSyncAllowed(user,write),foreign=opsSyncAllowed(user,write,1);
+ if(!(id==='snapshots'||id==='batch'||!id?domestic||foreign:Object.hasOwn(opsManualTargets,id)?foreign:domestic))return xjson({error:'请使用有对应运营中心权限的账号登录'},403);
+ if(id==='batch')return opsBatchReportsApi(req,env,user,action);
  if(!id&&req.method==='GET'){
- const cards=[];for(const [key,t] of Object.entries(opsSyncTargets)){
-  if(t.xhs){const target=creatorTarget(t.xhs),state=await xget(creatorSetting(target,'state'),env),last=await xget(creatorSetting(target,'collection'),env),failure=await xget(creatorSetting(target,'failure'),env),schedule=await xget(creatorSetting(target,'schedule'),env);cards.push({id:key,platform:t.platform,label:t.label,automatic:!!state&&schedule?.enabled===true,login:state?'已保存登录状态，采集时会校验':'需要扫码',last_at:last?.at||null,data_end:last?.as_of?new Date(Date.parse(last.as_of)-86400000).toISOString().slice(0,10):null,collection:last?'已采集':'尚未采集',failure:failure?.at>(last?.at||0)?'上次读取未完成，旧数据保留':null,can_collect:true});}
+ const cards=[];if(domestic)for(const [key,t] of Object.entries(opsSyncTargets)){
+  if(t.xhs){const target=creatorTarget(t.xhs),state=await xget(creatorSetting(target,'state'),env),last=await xget(creatorSetting(target,'collection'),env),failure=await xget(creatorSetting(target,'failure'),env),schedule=await xget(creatorSetting(target,'schedule'),env);cards.push({id:key,platform:t.platform,label:t.label,automatic:!!state&&schedule?.enabled===true,login:state?'已保存登录状态，采集时会校验':'需要扫码',last_at:last?.at||null,data_end:last?.as_of?new Date(Date.parse(last.as_of)-86400000).toISOString().slice(0,10):null,collection:last?'已采集':'尚未采集',failure:failure?.at>(last?.at||0)?'上次读取未完成，旧数据保留':null,can_collect:true,cloud_daily:await opsCloudReportStatus(env,t,'platform-daily',opsShanghaiReportDay(),last??null)});}
   else {const login=await xget(opsScanKey(key,'login'),env),profile=await xget(opsScanKey(key,'profile'),env),last=await xget(opsScanKey(key,'collection'),env),failure=await xget(opsScanKey(key,'failure'),env);cards.push({id:key,platform:t.platform,label:t.label,scan_expires:login?.expires>Date.now()&&(!last?.at||login.created_at>last.at)?login.expires:null,login:profile?'账号身份已核实':login?.expires>Date.now()?'扫码窗口已准备':'需要扫码',last_at:last?.at||null,data_end:last?.data_end||null,collection:last?.status==='partial'?'已读取部分数据，报表待验证':'运营报表待验证',failure:failure?.message||null,can_collect:!!t.key});}
  }
- return xjson({cards,can_operate:opsSyncAllowed(user,true),ad_automatic:(await xget('oe:schedule',env))?.enabled===true});
+ if(foreign)for(const [key,target] of Object.entries(opsManualTargets))cards.push({id:key,platform:target.platform,label:target.label,manual:true,collection:'人工补报'});
+ for(const card of cards){
+  const target=opsSyncTargets[card.id]||opsManualTargets[card.id];
+  const resolved=opsResolveReportTarget(target,card.id);
+  card.report_types=Object.fromEntries(opsReportTypes(resolved).map(kind=>[kind,opsReportTemplate(resolved,kind).label]));
+  const ad=card.report_types.advertising?await opsCloudReportStatus(env,resolved,'advertising'):null;
+  card.cloud_reports={...(card.cloud_daily?{'platform-daily':card.cloud_daily}:{}),...(ad?{advertising:ad}:{})};
+  delete card.cloud_daily;
+  card.can_upload=opsSyncAllowed(user,true,card.manual?1:2);
+  card.identity=target.identity||(card.id==='douyin-supertada'?'40982924024':null);
+ }
+ return xjson({cards,can_operate:opsSyncAllowed(user,true),ad_automatic:domestic&&(await xget('oe:schedule',env))?.enabled===true});
  }
  if(id==='snapshots'&&req.method==='GET'){
   const accounts={};
-  for(const key of ['garden','factory','toy','supertada'])accounts[key]=await opsReportSnapshot(key,env,await xget('dy:creator:'+key,env));
-  return xjson({accounts});
+  if(domestic){
+   for(const key of ['garden','factory','toy','supertada','ip'])accounts[key]=await opsReportSnapshot(key,env,await xget('dy:creator:'+key,env));
+   accounts['wechat-video']=await opsReportSnapshot('wechat-video',env,null);
+  }
+  return xjson({accounts,manual:await opsManualSnapshots(env,user),...(domestic?{creators:await creatorReports(env)}:{})});
  }
- const target=Object.prototype.hasOwnProperty.call(opsSyncTargets,id)?opsSyncTargets[id]:null;if(!target)return xjson({error:'未知平台账号'},404);
- if(action==='reports'&&target.key)return opsReportsApi(req,env,user,target);
+ const manual=Object.hasOwn(opsManualTargets,id)?opsManualTargets[id]:null;
+ const target=manual|| (Object.hasOwn(opsSyncTargets,id)?opsSyncTargets[id]:null);
+ if(!target)return xjson({error:'未知平台账号'},404);
+ if(action==='template'&&req.method==='GET'){
+  const template=opsReportTemplate(target,url.searchParams.get('kind'));
+  if(!template)return xjson({error:'该账号没有此报表模板'},404);
+  const kind=url.searchParams.get('kind');
+  const resolved=opsResolveReportTarget(target,id);
+  if(await opsCloudReportStatus(env,resolved,kind))return xjson({error:'云端已同步该报表，今天无需补传。'},409);
+  return opsDownloadReportCsv(target.platform+'-'+target.label+'-'+template.label+'.csv',[[ '运营报表模板','v1',id,kind],template.columns]);
+ }
+ if(manual)return action==='reports'?opsReportsApi(req,env,user,opsResolveReportTarget(manual,id)):xjson({error:'该账号仅支持报表上传'},404);
+ if(action==='reports'&&(target.key||target.reportKey||target.xhs))return opsReportsApi(req,env,user,opsResolveReportTarget(target,id));
  if(action==='covers'&&target.key)return opsContentCover(req,env,target);
  if(!['start','check','collect','live','preview','control','screen','input','diagnostic'].includes(action))return xjson({error:'操作不存在'},404);
  if(['start','check','collect','input'].includes(action)&&req.method!=='POST'||['live','preview','control','screen','diagnostic'].includes(action)&&req.method!=='GET')return xjson({error:'操作不支持'},405);

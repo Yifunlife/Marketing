@@ -81,3 +81,46 @@ export function opsParseDaily(rows,kind,today){
  if(!result.length||result.length>1100)throw Error('报表应包含1至1100天的数据。');
  return result.sort((a,b)=>a.date.localeCompare(b.date));
 }
+
+function opsParseCommerceDaily(rows,today){
+ const aliases={
+  date:['日期','统计日期','统计时间'],
+  sales:['支付金额','成交金额','支付GMV','成交GMV'],
+  redeemed:['核销金额','核销GMV','已核销金额','已核销GMV']
+ };
+ const match=(cell,names)=>names.includes(String(cell??'').replace(/^\uFEFF/,'').replace(/\s/g,'').replace(/[（(]元[）)]$/,''));
+ const headerIndex=rows.findIndex(row=>Object.values(aliases).every(names=>row.some(cell=>match(cell,names))));
+ if(headerIndex<0)throw Error('请上传 SUPER TADA 按日汇总的来客经营报表，需含日期、支付金额和核销金额（元）。');
+ const header=rows[headerIndex];
+ if(header.some(cell=>/订单编号|订单号|手机号|核销码|券码|客户姓名|消费者|用户昵称|身份证/.test(String(cell??''))))throw Error('请上传逐日汇总，去掉订单和消费者明细。');
+ const accountColumn=header.findIndex(cell=>String(cell??'').trim()==='抖音号');
+ const columns=Object.fromEntries(Object.entries(aliases).map(([key,names])=>{
+  const indices=header.flatMap((cell,index)=>match(cell,names)?[index]:[]);
+  if(indices.length!==1)throw Error('同一指标有多个列，请保留同口径的唯一金额列。');
+  return [key,indices[0]];
+ }));
+ const amount=(value,date)=>{
+  const raw=String(value??'').trim().replace(/^[¥￥]\s*/,'').replace(/\s*元$/,'');
+  if(!/^(?:\d+|\d{1,3}(?:,\d{3})+)(?:\.\d{1,2})?$/.test(raw))throw Error(date+' 的金额缺失或不是元，未覆盖已有数据。');
+  const [whole,decimal='']=raw.replace(/,/g,'').split('.');
+  const cents=Number(whole)*100+Number(decimal.padEnd(2,'0'));
+  if(!Number.isSafeInteger(cents))throw Error(date+' 的金额超出读取范围。');
+  return cents;
+ };
+ const result=[],seen=new Set();
+ for(const row of rows.slice(headerIndex+1)){
+  if(!row.some(cell=>String(cell??'').trim()))continue;
+  const raw=String(row[columns.date]??'').trim();
+  if(/^(合计|总计|汇总)$/.test(raw))continue;
+  let date=raw.replace(/[年月/.]/g,'-').replace(/日$/,'').replace(/-(\d)(?=-|$)/g,'-0$1');
+  if(/^\d{5}$/.test(raw))date=new Date(Date.UTC(1899,11,30)+Number(raw)*86400000).toISOString().slice(0,10);
+  const time=Date.parse(date);
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||!Number.isFinite(time)||new Date(time).toISOString().slice(0,10)!==date||date>=today)throw Error('经营报表须为截至昨日的完整自然日数据。');
+  if(accountColumn>=0&&String(row[accountColumn]??'').trim()!=='40982924024')throw Error('报表抖音号与 SUPER TADA 不匹配。');
+  if(seen.has(date))throw Error('经营报表含重复日期，请先按同一账号和范围逐日汇总。');
+  seen.add(date);
+  result.push({date,metrics:{commerce_sales_cents:amount(row[columns.sales],date),commerce_redeemed_cents:amount(row[columns.redeemed],date)}});
+ }
+ if(!result.length||result.length>1100)throw Error('经营报表应包含1至1100天的逐日数据。');
+ return result.sort((a,b)=>a.date.localeCompare(b.date));
+}
