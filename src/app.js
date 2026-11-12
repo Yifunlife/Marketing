@@ -113,11 +113,12 @@ function group(title,platforms,foreign){return '<div class="platform-group"><h3>
 function ledger(title,foreign){
  const fmt=value=>Number.isFinite(value)?value.toLocaleString('zh-CN'):'—';
  const rows=accountRows.filter(a=>foreignPlatforms.includes(a[0])===foreign);
+ if(foreign)return foreignLedger(rows.filter(a=>!specialistPlatformDesign[a[0]]));
  return '<div class="panel"><h3>'+title+'</h3><small>本月按已采集日期汇总，粉丝按最近一次报表快照。</small><div class="scroll"><table><thead><tr>'+['平台','运营账号','数据日期','总粉丝','本月发布（已采集）','本月增粉（已采集）','本月广告花费'].map(label=>'<th>'+label+'</th>').join('')+'</tr></thead><tbody>'+rows.map(a=>'<tr><td>'+a[0]+'</td><td>'+a[1]+'</td><td>'+displayText(accountDataDate(a)||'—')+'</td><td>'+fmt(creatorValue(a,'fans'))+'</td><td>'+fmt(creatorValue(a,'posts'))+'</td><td>'+fmt(creatorValue(a,'net_followers'))+'</td><td>'+accountAdFee(a)+'</td></tr>').join('')+'</tbody></table></div></div>';
 }
 
 
-return '<div class="row between"><div><small>亦玩 Workplace / 部门 / 运营部</small><h2>工作总台</h2></div><span class="badge">统计范围：本月</span></div><div class="two">'+summary('domestic')+summary('foreign')+'</div><div class="panel"><h3>运营平台总览</h3><div class="two" style="margin-top:14px">'+group('内贸平台 · 3 个平台 / 9 个账号',['抖音','小红书','视频号'],false)+group('外贸平台 · 4 个平台 / 9 个账号',['Instagram','Facebook','YouTube','TikTok'],true)+'</div><div id="ga-account-detail" class="account-detail" hidden aria-live="polite"></div></div>'+ledger('内贸平台账号运营',false)+ledger('外贸平台账号运营',true)+crmSummaryPanel();
+return '<div class="row between"><div><small>亦玩 Workplace / 部门 / 运营部</small><h2>工作总台</h2></div><span class="badge">统计范围：本月</span></div><div class="two">'+summary('domestic')+summary('foreign')+'</div><div class="panel"><h3>运营平台总览</h3><div class="two" style="margin-top:14px">'+group('内贸平台 · 3 个平台 / 9 个账号',['抖音','小红书','视频号'],false)+group('外贸平台 · '+foreignPlatforms.length+' 个平台 / '+accountRows.filter(a=>foreignPlatforms.includes(a[0])).length+' 个账号',foreignPlatforms,true)+'</div><div id="ga-account-detail" class="account-detail" hidden aria-live="polite"></div></div>'+specialistHomepage()+ledger('内贸平台账号运营',false)+ledger('外贸平台账号运营',true)+crmSummaryPanel();
 }
 
 
@@ -457,6 +458,53 @@ function douyinAccountDetail(a){
  '<section class="panel xhs-section"><h3>04 / 客户与成交</h3>'+cards([['有效客户','—'],['成交金额','—'],['有效客户成本','—'],['投入产出比','—']])+'<p class="muted">仅纳入 CRM 中已确认来自本抖音账号的客户与成交；来源未核实的不归入账号。广告转化次数、私信次数不等于有效客户。</p></section></div>';
 }
 const manualMetricLabels={fans:'总粉丝',posts:'发布量',impressions:'曝光量',views:'观看／播放',interactions:'互动量',collects:'收藏量',inquiries:'平台咨询／询盘',clicks:'点击量',visitors:'访客数',visits:'访问次数',submissions:'表单提交',whatsapp_clicks:'WhatsApp 点击',conversations:'新增对话',replies:'已回复对话',leads:'平台留资'};
+const foreignReportFields={
+ Instagram:['fans','posts','impressions','views','interactions','collects','inquiries'],
+ Facebook:['fans','posts','impressions','views','interactions','inquiries','leads'],
+ YouTube:['fans','posts','views','interactions','clicks'],
+ TikTok:['fans','posts','views','interactions','inquiries'],
+ 阿里巴巴:['impressions','clicks','visitors','inquiries','leads'],
+ 独立站:['visitors','visits','submissions','whatsapp_clicks'],
+ WhatsApp:['conversations','replies','leads']
+};
+function foreignMetricKeys(a){
+ const rows=manualPlatformReports[manualPlatformKey(a)]||[];
+ return [...new Set([...(foreignReportFields[a[0]]||[]),...Object.keys(manualMetricLabels).filter(key=>rows.some(row=>Number.isFinite(row.daily?.[key])))])];
+}
+function foreignReportStatus(a){
+ const rows=manualPlatformReports[manualPlatformKey(a)]||[],end=accountDataDate(a);
+ const written=Math.max(0,...rows.map(row=>Number(row.uploaded_at)||0));
+ return '<p class="muted">数据截至：'+displayText(end||'待补充')+'</p><p class="muted">最近入库：'+(written?new Date(written).toLocaleString('zh-CN',{timeZone:'Asia/Shanghai'}):'暂无上传记录')+'</p><span class="badge">'+(rows.length?'已有报表入库':'待上传报表')+'</span>'+(end&&end<new Date(Date.parse(reportToday())-86400000).toISOString().slice(0,10)?'<p class="muted">统计日期尚未覆盖昨日，请补充报表。</p>':'');
+}
+function foreignMetricCards(a,limit){
+ return foreignMetricKeys(a).slice(0,limit).map(key=>{
+  const metric=manualMetric(a,key);
+  return '<div class="summary-cell"><small>'+(key==='fans'?'最新':'本月')+manualMetricLabels[key]+'</small><strong>'+(metric?metric.value.toLocaleString('zh-CN'):'待补充')+'</strong><small>'+(metric?metric.start+' 至 '+metric.end+' · '+metric.days+' 天':'当前未提供此指标')+'</small></div>';
+ }).join('');
+}
+const specialistPlatformDesign={
+ 阿里巴巴:{title:'店铺曝光与询盘',tag:'B2B 店铺',note:'查看产品曝光、点击及询盘；有效客户与成交以 CRM 核实结果为准。',keys:['impressions','clicks','visitors','inquiries','leads']},
+ 独立站:{title:'网站访问与转化',tag:'网站获客',note:'表单提交与 WhatsApp 点击分别统计，点击不等于实际咨询。',keys:['visitors','visits','submissions','whatsapp_clicks']},
+ WhatsApp:{title:'对话承接与留资',tag:'客户沟通',note:'对话、回复和留资按导入报表统计，不能直接视为去重客户数。',keys:['conversations','replies','leads']}
+};
+function specialistPlatformCard(a,index){
+ const design=specialistPlatformDesign[a[0]],key=manualPlatformKey(a);
+ const metrics=design.keys.map(name=>{
+  const metric=manualMetric(a,name);
+  return '<div class="summary-cell"><small>本月'+manualMetricLabels[name]+'</small><strong>'+(metric?metric.value.toLocaleString('zh-CN'):'待补充')+'</strong><small>'+(metric?metric.start+' 至 '+metric.end+' · '+metric.days+' 天':'当前报表未提供')+'</small></div>';
+ }).join('');
+ return '<article class="platform specialist-platform" data-specialist-platform="'+key+'"><small>'+design.tag+'</small><h3>'+displayText(a[0])+' · '+design.title+'</h3>'+foreignReportStatus(a)+'<div class="summary-grid">'+metrics+'</div><p class="muted">'+design.note+'</p><div class="row"><button data-account="'+index+'">查看'+displayText(a[0])+'详情 →</button><a href="/ops-sync?embedded=1#'+key+'">上传 / 补齐报表</a></div></article>';
+}
+function specialistHomepage(){
+ return '<section class="panel"><h3>外贸获客与承接</h3><p class="muted">本月已导入数据 · 每个指标单独标明覆盖日期，缺失项待补充。</p><div class="platforms">'+accountRows.map((a,index)=>specialistPlatformDesign[a[0]]?specialistPlatformCard(a,index):'').join('')+'</div></section>';
+}
+function foreignAccountCard(a,index){
+ if(specialistPlatformDesign[a[0]])return specialistPlatformCard(a,index);
+ return '<article class="platform"><h3>'+displayText(a[0])+' / '+displayText(a[1])+'</h3>'+foreignReportStatus(a)+'<div class="summary-grid">'+foreignMetricCards(a,3)+'</div><p><button data-account="'+index+'">查看报表与指标 →</button></p></article>';
+}
+function foreignLedger(rows){
+ return '<section class="panel"><h3>外贸平台账号运营</h3><p class="muted">各平台按自身报表展示；指标按本月已上传日期累计，粉丝取最新快照。咨询、留资及对话不等于 CRM 有效客户。</p><div class="platforms">'+rows.map(a=>foreignAccountCard(a,accountRows.indexOf(a))).join('')+'</div></section>';
+}
 function manualPlatformKey([platform,account]){
  const code={乐园号:'garden',工厂号:'factory',玩具号:'toy',IP号:'ip','SUPER TADA':'supertada',Yifunlife_play:'play',Yifunlife_Technicalsupport:'technical',渠道汇总:'channel'}[account];
  const prefix={抖音:'',小红书:'xhs-',Instagram:'instagram-',Facebook:'facebook-',YouTube:'youtube-',TikTok:'tiktok-',阿里巴巴:'alibaba-',独立站:'website-',WhatsApp:'whatsapp-'}[platform];
@@ -504,6 +552,7 @@ function uploadedAdTotal(foreign,annual=false){
 }
 function uploadedAccountSummary(a){
  const rows=manualPlatformReports[manualPlatformKey(a)]||[];
+ if(foreignPlatforms.includes(a[0]))return '<section class="panel"><h3>'+displayText(a[0])+' · 经营指标</h3>'+foreignReportStatus(a)+'<p class="muted">本月累计仅覆盖已上传日期；粉丝为最新快照。缺失指标不计为零，其他月份的明细在下方单独展示。</p><div class="summary-grid">'+foreignMetricCards(a)+'</div><p>本月广告花费 '+accountAdFee(a)+'</p></section>';
  if(!rows.length)return '';
  const stats=Object.entries(manualMetricLabels).map(([key,label])=>{
   const metric=manualMetric(a,key);
@@ -530,7 +579,7 @@ function verifiedAccount(index){const a=accountRows[index];if(a[0]==='抖音')re
  return '<div class="xhs-view">'+xhsStyle()+'<section class="panel"><button data-month-back>返回账号列表</button><h2>视频号 / 亦玩集团</h2><p>官方 CSV 上传后更新。作品榜仅覆盖已上传明细，播放口径和可见权限待核实。</p><a href="/#ops-sync">打开报表上传</a></section>'+contentRanking(data)+douyinDailyTable(data)+'</div>';
  }const creator=creatorFor(a);if(creator)return creatorAccount(a,creator)+manualSupplement(a);if(foreignPlatforms.includes(a[0]))return '<div class="panel"><button data-month-back>← 返回账号列表</button><h2>'+a[0]+' / '+a[1]+'</h2></div>'+manualSupplement(a,true);if(a[0]!=='小红书')return '<div class="panel"><button data-month-back>返回账号列表</button><h2>'+a[0]+' / '+a[1]+'</h2></div>'+cards([['总粉丝','—'],['本月发布','—'],['昨日发布','—'],['本月净增粉丝','—'],['广告消耗','—'],['有效客户','—'],['成交金额','—']])+accountMonthComparison();const known=index===6&&hasFactorySnapshot();return '<div class="xhs-view">'+xhsStyle()+'<div class="panel account-heading"><button data-month-back>← 返回账号列表</button><small style="display:block;margin-top:8px">小红书 / '+a[1]+'</small><h2>'+(known?'亦玩游乐玩具工厂':a[1])+'</h2><div class="row between"><p>内容负责人 · '+accountOwner(a)+'</p><span class="xhs-status '+(known?'':'off')+'">'+(accountAdReport(a)?'聚光广告API已接入；内容单独同步':known?'更新于10月31日 · 手动读取':'尚未接入数据')+'</span></div></div><section class="panel xhs-section"><small>01 / GROWTH</small><h3>账号增长与产出</h3>'+cards([['总粉丝',known?'__XHS_FANS__':'—'],['本月发布',known?'12 条':'—'],['昨日发布',known?'1 条':'—'],['本月净增粉丝','—']])+accountMonthComparison()+(known?'<details><summary>查看近期粉丝变化与账号概览</summary><p>近30天新增121 · 流失19；近7天新增26 · 流失2。</p><p>10月24—30日：观看8,716 · 曝光1.7万 · 发布3条 · 互动137 · 主页访客154。</p><small>各统计周期分别展示，不合并为月度结果。</small></details>':'<p class="muted">接入后展示粉丝增长与内容产出。</p>')+'</section>'+(known?verifiedContent()+verifiedAds(accountAdReport(a)):'<section class="panel xhs-section"><small>02 / CONTENT</small><h3>内容表现</h3><p class="muted">尚未接入内容数据</p></section>'+(accountAdReport(a)?verifiedAds(accountAdReport(a)):'<section class="panel xhs-section"><small>03 / ADS</small><h3>广告获客</h3><p class="muted">尚未接入广告数据</p></section>')+'')+'<div class="xhs-notice">客户与成交：等待CRM数据；私信留资不等于有效客户，暂不计算成交回报。</div></div>';}
 
-function productionView(){if(state.tab===103)return '<div class="panel" style="padding:0;overflow:hidden"><iframe title="运营数据同步区 · 下载模板与上传" src="/ops-sync?embedded=1" style="display:block;width:100%;min-height:700px;border:0"></iframe></div>';if(monthlyAccount!==null&&[0,1,2].includes(state.tab))return verifiedAccount(monthlyAccount);if(state.tab===0)return marketingDashboard();if(state.tab===1||state.tab===2){const chosen=state.tab===1?selectedForeign:selectedDomestic;const rows=accountRows.map((a,i)=>({a,i})).filter(x=>foreignPlatforms.includes(x.a[0])===(state.tab===1)&&(!chosen||x.a[0]===chosen));if(!chosen&&state.tab===2)return douyinList(rows.filter(x=>x.a[0]==='抖音'))+xhsList(rows.filter(x=>x.a[0]==='小红书'));if(chosen==='小红书')return xhsList(rows);if(chosen==='抖音')return douyinList(rows);return '<div class="panel"><h2>'+tabs[state.tab]+(chosen?' / '+chosen:'')+'</h2><small>正式数据 · 未核实账号待同步</small><div class="platforms">'+rows.map(x=>'<div class="platform"><h3>'+x.a[0]+' / '+x.a[1]+'</h3><p>'+(manualPlatformReports[manualPlatformKey(x.a)]?.[0]?'补报数据截至 '+displayText(manualPlatformReports[manualPlatformKey(x.a)][0].date):'待上传报表')+'</p><button data-account="'+x.i+'">查看账号数据</button></div>').join('')+'</div></div>';}if(state.tab===7&&window.renderCrmCustomers)return window.renderCrmCustomers();if(state.tab===6)return crmSummaryPanel();if([5,101,102].includes(state.tab))return pendingPanel(tabs[state.tab]||'业务数据');return null;}
+function productionView(){if(state.tab===103)return '<div class="panel" style="padding:0;overflow:hidden"><iframe title="运营数据同步区 · 下载模板与上传" src="/ops-sync?embedded=1" style="display:block;width:100%;min-height:700px;border:0"></iframe></div>';if(monthlyAccount!==null&&[0,1,2].includes(state.tab))return verifiedAccount(monthlyAccount);if(state.tab===0)return marketingDashboard();if(state.tab===1||state.tab===2){const chosen=state.tab===1?selectedForeign:selectedDomestic;const rows=accountRows.map((a,i)=>({a,i})).filter(x=>foreignPlatforms.includes(x.a[0])===(state.tab===1)&&(!chosen||x.a[0]===chosen));if(!chosen&&state.tab===2)return douyinList(rows.filter(x=>x.a[0]==='抖音'))+xhsList(rows.filter(x=>x.a[0]==='小红书'));if(chosen==='小红书')return xhsList(rows);if(chosen==='抖音')return douyinList(rows);return '<div class="panel"><h2>'+tabs[state.tab]+(chosen?' / '+chosen:'')+'</h2><small>正式数据 · 未核实账号待同步</small><div class="platforms">'+rows.map(x=>state.tab===1?foreignAccountCard(x.a,x.i):'<div class="platform"><h3>'+x.a[0]+' / '+x.a[1]+'</h3><p>'+(manualPlatformReports[manualPlatformKey(x.a)]?.[0]?'补报数据截至 '+displayText(manualPlatformReports[manualPlatformKey(x.a)][0].date):'待上传报表')+'</p><button data-account="'+x.i+'">查看账号数据</button></div>').join('')+'</div></div>';}if(state.tab===7&&window.renderCrmCustomers)return window.renderCrmCustomers();if(state.tab===6)return crmSummaryPanel();if([5,101,102].includes(state.tab))return pendingPanel(tabs[state.tab]||'业务数据');return null;}
 let reportRefreshPromise=null,reportRefreshAgain=false,reportSnapshotVersion='';
 async function refreshDouyinData(){
  if(reportRefreshPromise){reportRefreshAgain=true;return reportRefreshPromise;}

@@ -5,7 +5,7 @@ import vm from 'node:vm';
 
 const source=fs.readFileSync('src/app.js','utf8');
 function frontend(){
- const c={Date,Intl,manualPlatformReports:{},accountRows:[['Instagram','工厂号'],['Facebook','工厂号']],foreignPlatforms:['Instagram','Facebook'],accountAdReport:()=>null,douyinData:()=>null,creatorFor:()=>null,displayText:String};
+ const c={Date,Intl,manualPlatformReports:{},accountRows:[['Instagram','工厂号'],['Facebook','工厂号']],foreignPlatforms:['Instagram','Facebook','YouTube','TikTok','阿里巴巴','独立站','WhatsApp'],accountAdReport:()=>null,douyinData:()=>null,creatorFor:()=>null,displayText:String};
  vm.createContext(c);
  vm.runInContext(source.slice(source.indexOf('const manualMetricLabels='),source.indexOf('function verifiedAccount(')),c);
  vm.runInContext(source.slice(source.indexOf('function creatorValue('),source.indexOf('function creatorAccount(')),c);
@@ -78,4 +78,37 @@ test('successful uploads refresh every account source across tabs, and a later u
  assert.equal(c.manualPlatformReports['instagram-garden'][0].date,'2026-11-10');
  assert.equal(c.creatorData.factory.fans,201);
  assert.equal(renders,2);
+});
+
+test('foreign cards adapt to platform metrics and distinguish upload time, old dates, zero and missing values',()=>{
+ const c=frontend();
+ const month=c.reportToday().slice(0,7);
+ c.manualPlatformReports['whatsapp-channel']=[{date:month+'-01',daily:{conversations:0},ad:{},uploaded_at:Date.parse(month+'-10T00:00:00Z')}];
+ const a=['WhatsApp','渠道汇总'];
+ const html=c.foreignAccountCard(a,20);
+ assert.match(html,/新增对话/);
+ assert.match(html,/<strong>0<\/strong>/);
+ assert.match(html,/已回复对话/);
+ assert.match(html,/待补充/);
+ assert.doesNotMatch(html,/总粉丝|本月发布/);
+ assert.match(html,/数据截至：/);
+ assert.match(html,/最近入库：/);
+ assert.match(html,new RegExp(month+'-01'));
+ assert.match(c.uploadedAccountSummary(['阿里巴巴','渠道汇总']),/经营指标/);
+ assert.match(c.uploadedAccountSummary(['阿里巴巴','渠道汇总']),/待上传报表/);
+});
+
+test('homepage specialist section uses imported platform fields and keeps all entry points',()=>{
+ const c=frontend(),month=c.reportToday().slice(0,7);
+ c.accountRows.push(['阿里巴巴','渠道汇总'],['独立站','渠道汇总'],['WhatsApp','渠道汇总']);
+ c.manualPlatformReports['website-channel']=[{date:month+'-02',daily:{visitors:25,submissions:0,whatsapp_clicks:3},ad:{}}];
+ c.manualPlatformReports['alibaba-channel']=[{date:month+'-01',daily:{inquiries:7},ad:{}}];
+ const html=c.specialistHomepage();
+ for(const name of ['店铺曝光与询盘','网站访问与转化','对话承接与留资'])assert.match(html,new RegExp(name));
+ assert.match(html,/<strong>25<\/strong>/);
+ assert.match(html,/<strong>0<\/strong>/);
+ assert.match(html,/<strong>7<\/strong>/);
+ for(const key of ['alibaba-channel','website-channel','whatsapp-channel'])assert.match(html,new RegExp('/ops-sync\\?embedded=1#'+key));
+ assert.doesNotMatch(html,/总粉丝|本月发布/);
+ assert.match(source,/\+specialistHomepage\(\)/);
 });
