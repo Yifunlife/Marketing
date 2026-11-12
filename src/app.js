@@ -156,7 +156,7 @@ const liveXhsReports=__LIVE_XHS_REPORTS__;
 const creatorData=__CREATOR_REPORTS__;
 function creatorFor(a){return a[0]!=='小红书'?null:a[1]==='乐园号'?creatorData['49314445652']:a[1]==='工厂号'?creatorData.factory:a[1]==='玩具号'?creatorData.toy:a[1]==='SUPER TADA'?creatorData.supertada:null;}
 function creatorValue(a,key){
- const data=a[0]==='抖音'?douyinData(a):creatorFor(a);
+ const data=a[0]==='视频号'?douyinCreators['wechat-video']:a[0]==='抖音'?douyinData(a):creatorFor(a);
  const native=key==='fans'?data?.fans:key==='yesterday_net'?data?.yesterday?.net_followers:data?.growth?.[key]??data?.month?.[key]??data?.month_partial?.[key];
  return Number.isFinite(native)?native:manualMetric(a,key)?.value??null;
 }
