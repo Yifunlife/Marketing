@@ -531,21 +531,39 @@ function verifiedAccount(index){const a=accountRows[index];if(a[0]==='抖音')re
  }const creator=creatorFor(a);if(creator)return creatorAccount(a,creator)+manualSupplement(a);if(foreignPlatforms.includes(a[0]))return '<div class="panel"><button data-month-back>← 返回账号列表</button><h2>'+a[0]+' / '+a[1]+'</h2></div>'+manualSupplement(a,true);if(a[0]!=='小红书')return '<div class="panel"><button data-month-back>返回账号列表</button><h2>'+a[0]+' / '+a[1]+'</h2></div>'+cards([['总粉丝','—'],['本月发布','—'],['昨日发布','—'],['本月净增粉丝','—'],['广告消耗','—'],['有效客户','—'],['成交金额','—']])+accountMonthComparison();const known=index===6&&hasFactorySnapshot();return '<div class="xhs-view">'+xhsStyle()+'<div class="panel account-heading"><button data-month-back>← 返回账号列表</button><small style="display:block;margin-top:8px">小红书 / '+a[1]+'</small><h2>'+(known?'亦玩游乐玩具工厂':a[1])+'</h2><div class="row between"><p>内容负责人 · '+accountOwner(a)+'</p><span class="xhs-status '+(known?'':'off')+'">'+(accountAdReport(a)?'聚光广告API已接入；内容单独同步':known?'更新于10月31日 · 手动读取':'尚未接入数据')+'</span></div></div><section class="panel xhs-section"><small>01 / GROWTH</small><h3>账号增长与产出</h3>'+cards([['总粉丝',known?'__XHS_FANS__':'—'],['本月发布',known?'12 条':'—'],['昨日发布',known?'1 条':'—'],['本月净增粉丝','—']])+accountMonthComparison()+(known?'<details><summary>查看近期粉丝变化与账号概览</summary><p>近30天新增121 · 流失19；近7天新增26 · 流失2。</p><p>10月24—30日：观看8,716 · 曝光1.7万 · 发布3条 · 互动137 · 主页访客154。</p><small>各统计周期分别展示，不合并为月度结果。</small></details>':'<p class="muted">接入后展示粉丝增长与内容产出。</p>')+'</section>'+(known?verifiedContent()+verifiedAds(accountAdReport(a)):'<section class="panel xhs-section"><small>02 / CONTENT</small><h3>内容表现</h3><p class="muted">尚未接入内容数据</p></section>'+(accountAdReport(a)?verifiedAds(accountAdReport(a)):'<section class="panel xhs-section"><small>03 / ADS</small><h3>广告获客</h3><p class="muted">尚未接入广告数据</p></section>')+'')+'<div class="xhs-notice">客户与成交：等待CRM数据；私信留资不等于有效客户，暂不计算成交回报。</div></div>';}
 
 function productionView(){if(state.tab===103)return '<div class="panel" style="padding:0;overflow:hidden"><iframe title="运营数据同步区 · 下载模板与上传" src="/ops-sync?embedded=1" style="display:block;width:100%;min-height:700px;border:0"></iframe></div>';if(monthlyAccount!==null&&[0,1,2].includes(state.tab))return verifiedAccount(monthlyAccount);if(state.tab===0)return marketingDashboard();if(state.tab===1||state.tab===2){const chosen=state.tab===1?selectedForeign:selectedDomestic;const rows=accountRows.map((a,i)=>({a,i})).filter(x=>foreignPlatforms.includes(x.a[0])===(state.tab===1)&&(!chosen||x.a[0]===chosen));if(!chosen&&state.tab===2)return douyinList(rows.filter(x=>x.a[0]==='抖音'))+xhsList(rows.filter(x=>x.a[0]==='小红书'));if(chosen==='小红书')return xhsList(rows);if(chosen==='抖音')return douyinList(rows);return '<div class="panel"><h2>'+tabs[state.tab]+(chosen?' / '+chosen:'')+'</h2><small>正式数据 · 未核实账号待同步</small><div class="platforms">'+rows.map(x=>'<div class="platform"><h3>'+x.a[0]+' / '+x.a[1]+'</h3><p>'+(manualPlatformReports[manualPlatformKey(x.a)]?.[0]?'补报数据截至 '+displayText(manualPlatformReports[manualPlatformKey(x.a)][0].date):'待上传报表')+'</p><button data-account="'+x.i+'">查看账号数据</button></div>').join('')+'</div></div>';}if(state.tab===7&&window.renderCrmCustomers)return window.renderCrmCustomers();if(state.tab===6)return crmSummaryPanel();if([5,101,102].includes(state.tab))return pendingPanel(tabs[state.tab]||'业务数据');return null;}
+let reportRefreshPromise=null,reportRefreshAgain=false,reportSnapshotVersion='';
 async function refreshDouyinData(){
- try{
-  const response=await fetch('/api/ops-sync/snapshots');
-  if(!response.ok)return;
-  const data=await response.json();
-  Object.assign(douyinCreators,data.accounts);
-  Object.assign(manualPlatformReports,data.manual||{});
-  if(data.creators)Object.assign(creatorData,data.creators);
-  if([0,1,2].includes(state.tab))render();
- }catch{}
+ if(reportRefreshPromise){reportRefreshAgain=true;return reportRefreshPromise;}
+ reportRefreshPromise=(async()=>{
+  try{
+   const response=await fetch('/api/ops-sync/snapshots',{cache:'no-store',signal:AbortSignal.timeout(20000)});
+   if(!response.ok)return;
+   const data=await response.json(),version=JSON.stringify(data);
+   Object.assign(douyinCreators,data.accounts);
+   Object.assign(manualPlatformReports,data.manual||{});
+   if(data.creators)Object.assign(creatorData,data.creators);
+   const changed=version!==reportSnapshotVersion;
+   reportSnapshotVersion=version;
+   if(changed&&[0,1,2].includes(state.tab))render();
+  }catch{}
+ })();
+ try{await reportRefreshPromise;}
+ finally{
+  reportRefreshPromise=null;
+  if(reportRefreshAgain){reportRefreshAgain=false;void refreshDouyinData();}
+ }
 }
+
 window.addEventListener('message',event=>{
  if(event.origin!==location.origin||event.data?.type!=='douyin-reports-updated')return;
  const frame=root.querySelector('iframe[src^="/ops-sync"]');
  if(frame&&event.source===frame.contentWindow)void refreshDouyinData();
+});
+window.addEventListener('storage',event=>{
+ if(event.key==='ops:reports-updated'&&event.newValue)void refreshDouyinData();
+});
+root.addEventListener('click',event=>{
+ if(event.target.closest('[data-go],[data-foreign],[data-domestic],[data-account],[data-month-back]'))void refreshDouyinData();
 });
 window.addEventListener('focus',()=>void refreshDouyinData());
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)void refreshDouyinData();});

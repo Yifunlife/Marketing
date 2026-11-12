@@ -52,3 +52,30 @@ test('partial-month native and commerce reports remain visible while full-month 
  assert.equal(commerce.partial_current.ratio,60);
  assert.equal(commerce.previous,null);
 });
+
+test('successful uploads refresh every account source across tabs, and a later upload queues a fresh read',async()=>{
+ const listeners=new Map(),reads=[];
+ let renders=0;
+ const c={
+  douyinCreators:{},manualPlatformReports:{},creatorData:{},state:{tab:0},location:{origin:'https://site'},
+  AbortSignal,document:{hidden:false,addEventListener(){}},setInterval(){},
+  window:{addEventListener:(name,listener)=>listeners.set(name,listener)},
+  root:{addEventListener(){},querySelector:()=>null},render:()=>renders++,
+  fetch:(url,options)=>new Promise(resolve=>{assert.equal(options.cache,'no-store');reads.push(resolve);})
+ };
+ vm.createContext(c);
+ vm.runInContext(source.slice(source.indexOf('let reportRefreshPromise='),source.indexOf("window.addEventListener('ops:open'")),c);
+ const flush=()=>new Promise(resolve=>setImmediate(resolve));
+ listeners.get('storage')({key:'ops:reports-updated',newValue:'1'});
+ listeners.get('storage')({key:'ops:reports-updated',newValue:'2'});
+ assert.equal(reads.length,1);
+ reads[0]({ok:true,json:async()=>({accounts:{factory:{fans:100}},manual:{'instagram-garden':[{date:'2026-11-09'}]},creators:{factory:{fans:200}}})});
+ await flush();
+ assert.equal(reads.length,2);
+ reads[1]({ok:true,json:async()=>({accounts:{factory:{fans:101}},manual:{'instagram-garden':[{date:'2026-11-10'}]},creators:{factory:{fans:201}}})});
+ await flush();
+ assert.equal(c.douyinCreators.factory.fans,101);
+ assert.equal(c.manualPlatformReports['instagram-garden'][0].date,'2026-11-10');
+ assert.equal(c.creatorData.factory.fans,201);
+ assert.equal(renders,2);
+});

@@ -59,6 +59,7 @@
   }
  }
  function notifyUpdate(){
+  try{localStorage.setItem('ops:reports-updated',String(Date.now()));}catch{}
   if(window.parent!==window)window.parent.postMessage({type:'douyin-reports-updated'},location.origin);
  }
  function setupBatch(accounts){
