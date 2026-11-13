@@ -165,3 +165,27 @@
 #growth-agent .home-summaries .foreign .summary-grid>.summary-cell:last-child{background:#faf9f3}
 #growth-agent .home-summaries .summary-grid>.summary-cell:last-child strong{font-size:18px;margin:0;text-align:right}
 @media(max-width:640px){#growth-agent .home-summaries .summary-grid>.summary-cell:last-child strong{font-size:17px}}
+/* Homepage acquisition cards: a quiet header, aligned metric rows and a compact results block. */
+#growth-agent .home-dashboard .home-channel-card{display:grid;grid-template-rows:auto auto 154px auto auto;align-content:start;gap:10px;padding:16px!important;background:linear-gradient(150deg,color-mix(in srgb,var(--channel-accent) 5%,white),#fff 38%);border-top-width:2px;border-radius:12px;box-shadow:0 3px 12px #18365305}
+#growth-agent .home-channel-card .channel-heading{display:flex;align-items:center;gap:10px}
+#growth-agent .home-channel-card .channel-mark{width:34px;height:34px;display:grid;place-items:center;border-radius:10px;background:color-mix(in srgb,var(--channel-accent) 10%,white);color:var(--channel-accent);font-size:13px;font-weight:700;flex-shrink:0}
+#growth-agent .home-dashboard .home-channel-card .channel-heading h3{margin:0;line-height:1.4;font-size:16px!important;letter-spacing:0}
+#growth-agent .home-channel-card .channel-heading small{font-size:10px;color:#8793a4}
+#growth-agent .home-channel-card .home-report-state{font-size:10px;margin:0;padding:0 0 8px;border-bottom:1px solid #edf1f6}
+#growth-agent .home-dashboard .home-channel-card .summary-grid{display:flex;flex-direction:column;gap:0;margin:0;background:transparent;border:0;border-radius:0;align-self:start}
+#growth-agent .home-dashboard .home-channel-card .summary-cell{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:0;padding:5px 0;border:0;border-radius:0;background:transparent;line-height:1.5}
+#growth-agent .home-dashboard .home-channel-card .summary-cell>small:first-child{font-size:11px;color:#718198}
+#growth-agent .home-dashboard .home-channel-card .summary-cell strong{font-size:17px;line-height:1.3;margin:0;color:#233f60;font-variant-numeric:tabular-nums}
+#growth-agent .home-channel-card .platform-sales{margin:0;padding:10px 0 0}
+#growth-agent .home-channel-card .platform-sales-heading{font-size:11px;margin-bottom:6px}
+#growth-agent .home-channel-card .platform-sales-heading>small{display:none}
+#growth-agent .home-channel-card .platform-sales-table{gap:4px 8px;padding:8px 10px;border-radius:8px}
+#growth-agent .home-channel-card .platform-sales-table strong{font-size:13px}
+#growth-agent .home-channel-card .platform-sales details{margin-top:5px}
+#growth-agent .home-dashboard .home-channel-card>.row{margin-top:0;padding-top:10px;gap:8px;justify-content:space-between}
+#growth-agent .home-dashboard .home-channel-card .row button{font-size:11px;min-height:32px;padding:5px 9px!important}
+#growth-agent .home-channel-card .row a{font-size:10px;text-decoration:none;white-space:nowrap}
+@media(max-width:640px){#growth-agent .home-dashboard .home-channel-card{grid-template-rows:auto auto auto auto auto;gap:9px;padding:14px!important}#growth-agent .home-dashboard .home-channel-card .summary-cell{padding:6px 0}}
+#growth-agent #ga-body .home-channel-card .summary-cell{padding:4px 0;min-height:0}
+#growth-agent .home-dashboard .home-channel-card{grid-template-rows:auto auto minmax(154px,auto) auto auto}
+@media(max-width:640px){#growth-agent .home-dashboard .home-channel-card{grid-template-rows:auto auto auto auto auto}}

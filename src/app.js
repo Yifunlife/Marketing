@@ -556,7 +556,8 @@ function specialistPlatformCard(a,index,compact=false){
   const metric=manualMetric(a,name);
   return '<div class="summary-cell"><small>本月'+manualMetricLabels[name]+'</small><strong>'+(metric?metric.value.toLocaleString('zh-CN'):compact?'—':'待补充')+'</strong><small>'+(metric?metric.start+' 至 '+metric.end+' · '+metric.days+' 天':'当前报表未提供')+'</small></div>';
  }).join('');
- return '<article class="platform specialist-platform" data-specialist-platform="'+key+'"><small>'+design.tag+'</small><h3>'+displayText(a[0])+' · '+design.title+'</h3>'+foreignReportStatus(a,compact)+'<div class="summary-grid">'+metrics+'</div>'+platformSalesPanel(a[0])+(compact?'':'<p class="muted">'+design.note+'</p>')+'<div class="row"><button data-account="'+index+'">查看'+displayText(a[0])+'详情 →</button><a href="/ops-sync?embedded=1#'+key+'">上传 / 补齐报表</a></div></article>';
+ const heading=compact?'<div class="channel-heading" title="'+design.title+'"><span class="channel-mark" aria-hidden="true">'+({阿里巴巴:'A',独立站:'W',WhatsApp:'WA'}[a[0]])+'</span><div><h3>'+displayText(a[0])+'</h3><small>'+design.tag+'</small></div></div>':'<small>'+design.tag+'</small><h3>'+displayText(a[0])+' · '+design.title+'</h3>';
+ return '<article class="platform specialist-platform'+(compact?' home-channel-card':'')+'" data-specialist-platform="'+key+'">'+heading+foreignReportStatus(a,compact)+'<div class="summary-grid">'+metrics+'</div>'+platformSalesPanel(a[0])+(compact?'':'<p class="muted">'+design.note+'</p>')+'<div class="row"><button data-account="'+index+'">查看'+displayText(a[0])+'详情 →</button><a href="/ops-sync?embedded=1#'+key+'">上传 / 补齐报表</a></div></article>';
 }
 function specialistHomepage(){
  return '<section class="panel"><h3>获客与承接</h3><div class="platforms">'+accountRows.map((a,index)=>specialistPlatformDesign[a[0]]?specialistPlatformCard(a,index,true):'').join('')+'</div></section>';
