@@ -101,11 +101,12 @@ function crmTradeSummary(market){
   ['本月新增客户',count(sales?.new_customers)],
   ['A 类客户',count(sales?.a_customers)],
   ['已联系客户',count(sales?.contacted)],
-  ['运营账号',accountRows.filter(a=>foreignPlatforms.includes(a[0])===foreign).length+' 个']
+  ['运营账号',accountRows.filter(a=>foreignPlatforms.includes(a[0])===foreign).length+' 个'],
+  ['年度广告费',foreign?uploadedAdTotal(true,true):domesticAnnualTotal()]
  ];
  return '<div class="home-summary-heading"><h3>'+(foreign?'外贸概览':'内贸概览')+'</h3><span>'+(sales?'本月成交 '+sales.orders.toLocaleString('zh-CN')+' 单':'本月')+'</span></div>'+
   '<div class="summary-grid">'+metrics.map(([label,value])=>'<div class="summary-cell"><small>'+label+'</small><strong>'+(['待同步','待上传广告日报'].includes(value)?'—':value)+'</strong></div>').join('')+'</div>'+
-  '<details class="home-method"><summary>统计口径与年度数据</summary><p>'+adNote+'</p><p>'+crmNote+'</p><p>年度广告费 '+(foreign?uploadedAdTotal(true,true):domesticAnnualTotal())+'</p></details>';
+  '<details class="home-method"><summary>统计说明</summary><p>'+adNote+'</p><p>'+crmNote+'</p></details>';
 
 }
 function marketingDashboard(){

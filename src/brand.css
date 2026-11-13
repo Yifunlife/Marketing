@@ -159,3 +159,9 @@
  #growth-agent #ga-body h2{font-size:18px}
  #growth-agent #ga-body .platform{padding:14px}
 }
+
+/* Annual spend remains visible without adding a third row of tall cards. */
+#growth-agent .home-summaries .summary-grid>.summary-cell:last-child{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:0;padding:10px 12px;background:#f6f9ff}
+#growth-agent .home-summaries .foreign .summary-grid>.summary-cell:last-child{background:#faf9f3}
+#growth-agent .home-summaries .summary-grid>.summary-cell:last-child strong{font-size:18px;margin:0;text-align:right}
+@media(max-width:640px){#growth-agent .home-summaries .summary-grid>.summary-cell:last-child strong{font-size:17px}}
