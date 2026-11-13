@@ -136,3 +136,14 @@ test('month comparison requires matched complete dates and handles zero baseline
  c.manualPlatformReports['alibaba-channel']=[row(month+'-01',0),row(prior+'-01',0)];
  assert.match(c.manualMetricChange(a,'clicks'),/→ 0.0%/);
 });
+
+test('ledger respects comparable native months and treats lower costs as improvement',()=>{
+ const c=frontend(),month=c.reportToday().slice(0,7),[y,m]=month.split('-').map(Number),previous=new Date(Date.UTC(y,m-2,1)).toISOString().slice(0,7);
+ const data={fans:100,month:{start:month+'-01',end:month+'-02',posts:6},previous:{start:previous+'-01',end:previous+'-02',posts:4}};
+ c.douyinData=()=>data;
+ assert.match(c.ledgerMetric(['抖音','工厂号'],'posts'),/↑ 50.0%/);
+ data.previous.end=previous+'-01';
+ assert.match(c.ledgerMetric(['抖音','工厂号'],'posts'),/暂无对比/);
+ assert.match(c.ledgerDelta(50,100,true),/class="period-delta up"[^>]*>↓ 50.0%/);
+ assert.match(c.ledgerDelta(10,0),/↑ 新增/);
+});

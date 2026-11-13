@@ -347,3 +347,30 @@ body:has(#batch-form) :is(.file-hint,.template-hint){font-size:10px;line-height:
 #growth-agent .home-dashboard .home-channel-card .summary-cell strong{text-align:right}
 #growth-agent .home-dashboard .home-channel-card{grid-template-rows:auto minmax(110px,auto) auto auto}
 @media(max-width:640px){#growth-agent .home-dashboard .home-channel-card{grid-template-rows:auto auto auto auto}}
+/* Account ledgers share inline values and comparison badges with platform cards. */
+#growth-agent .home-ledger .account-ledger-table{font-size:12px;min-width:1080px}
+#growth-agent .home-ledger .account-ledger-table :is(td,th){padding:9px 10px;vertical-align:middle;white-space:nowrap}
+#growth-agent .home-ledger .account-ledger-table th{font-size:10px;font-weight:500}
+#growth-agent .account-ledger-table tbody tr:nth-child(even){background:#fbfcfe}
+#growth-agent .account-ledger-table .ledger-number{font-size:12px;font-weight:600;color:#3269a8;font-variant-numeric:tabular-nums}
+#growth-agent .account-ledger-table .ledger-number.positive{color:#247d70}
+#growth-agent .account-ledger-table .ledger-number.negative{color:#b15c5a}
+#growth-agent .account-ledger-table .period-delta{display:inline-block;margin:0 0 0 7px;font-size:9px;font-weight:400}
+#growth-agent .account-ledger-table .period-delta.unavailable{font-size:9px;color:#a7b1bf}
+#growth-agent .ledger-spend{color:#a47422;font-variant-numeric:tabular-nums}
+#growth-agent .ledger-platform{display:inline-block;padding:3px 7px;border:1px solid #e5ebf3;border-radius:5px;background:#f4f7fb;color:#536d8d;font-size:10px}
+#growth-agent .ledger-platform[data-platform="小红书"]{background:#fbf2f4;border-color:#f3e4e8;color:#b36176}
+#growth-agent .ledger-platform[data-platform="视频号"]{background:#f0f7f3;border-color:#e2eee7;color:#4b8872}
+#growth-agent .ledger-pending{display:inline-block;font-size:10px;color:#9aa7b7;background:#f3f5f8;padding:3px 7px;border-radius:5px;font-weight:400}
+#growth-agent .ledger-money{color:#247d70;font-size:12px;font-weight:600}
+#growth-agent .ledger-rate{display:inline-block;color:#7953ad;background:#f6f2fb;border-radius:4px;padding:1px 5px;font-size:10px;margin-left:7px}
+@media(max-width:640px){
+ #growth-agent .home-ledger:has(.account-ledger-table)>.scroll{overflow-x:auto}
+ #growth-agent .home-ledger .account-ledger-table{display:table;min-width:1080px}
+ #growth-agent .home-ledger .account-ledger-table thead{display:table-header-group}
+ #growth-agent .home-ledger .account-ledger-table tbody{display:table-row-group}
+ #growth-agent .home-ledger .account-ledger-table tr{display:table-row;padding:0}
+ #growth-agent .home-ledger .account-ledger-table td{display:table-cell;text-align:right!important;padding:9px 10px;font-size:11px}
+ #growth-agent .home-ledger .account-ledger-table td:nth-child(-n+3){text-align:left!important;border-bottom:1px solid #edf1f6;font-weight:400}
+ #growth-agent .home-ledger .account-ledger-table td:before{display:none!important}
+}

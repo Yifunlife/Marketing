@@ -117,7 +117,7 @@ function ledger(title,foreign){
  const fmt=value=>Number.isFinite(value)?value.toLocaleString('zh-CN'):'—';
  const rows=accountRows.filter(a=>foreignPlatforms.includes(a[0])===foreign);
  if(foreign)return foreignLedger(rows.filter(a=>!specialistPlatformDesign[a[0]]),ledgerOpen);
- return '<details class="panel home-ledger"'+ledgerOpen+'><summary>'+title+'<span>'+rows.length+' 个账号</span></summary><div class="scroll"><table><thead><tr>'+['平台','运营账号','数据日期','总粉丝','本月发布','本月增粉','本月广告花费','本月成交 / 转化','年度成交 / 转化'].map(label=>'<th>'+label+'</th>').join('')+'</tr></thead><tbody>'+rows.map(a=>'<tr><td>'+a[0]+'</td><td>'+a[1]+'</td><td>'+displayText(accountDataDate(a)||'—')+'</td><td>'+fmt(creatorValue(a,'fans'))+'</td><td>'+fmt(creatorValue(a,'posts'))+'</td><td>'+fmt(creatorValue(a,'net_followers'))+'</td><td>'+accountAdFee(a)+'</td>'+accountSalesCells(a)+'</tr>').join('')+'</tbody></table></div></details>';
+ return '<details class="panel home-ledger"'+ledgerOpen+'><summary>'+title+'<span>较上月同期 · '+rows.length+' 个账号</span></summary><div class="scroll"><table class="account-ledger-table"><thead><tr>'+['平台','运营账号','数据日期','总粉丝','本月发布','本月增粉','本月广告花费','本月成交 / 转化','年度成交 / 转化'].map(label=>'<th>'+label+'</th>').join('')+'</tr></thead><tbody>'+rows.map(a=>'<tr><td><span class="ledger-platform" data-platform="'+displayText(a[0])+'">'+a[0]+'</span></td><td>'+a[1]+'</td><td>'+displayText(accountDataDate(a)||'—')+'</td><td>'+ledgerMetric(a,'fans')+'</td><td>'+ledgerMetric(a,'posts')+'</td><td>'+ledgerMetric(a,'net_followers')+'</td><td>'+ledgerAdMetric(a)+'</td>'+accountSalesCells(a)+'</tr>').join('')+'</tbody></table></div></details>';
 }
 
 
@@ -508,9 +508,27 @@ function accountSalesData(a){
  const officialRefs={factory:'shanghaiyiwan',garden:'f09530',ip:'47324783989'};
  return platformPerformance?.accounts?.find(row=>row.platform===a[0]&&row.account_ref&&(row.account_ref===key||(a[0]==='抖音'&&row.account_ref===officialRefs[key])));
 }
+function ledgerMetric(a,key){
+ const value=creatorValue(a,key),data=a[0]==='视频号'?douyinCreators['wechat-video']:a[0]==='抖音'?douyinData(a):creatorFor(a);
+ const manual=manualMetric(a,key);
+ let delta=manual?.value===value&&(!data||manual.end===data.data_end)?manualMetricChange(a,key):ledgerDelta(null,null);
+ const current=data?.month,previous=data?.previous,today=reportToday(),[y,m]=today.split('-').map(Number),priorMonth=new Date(Date.UTC(y,m-2,1)).toISOString().slice(0,7);
+ if(key!=='fans'&&current?.start===today.slice(0,7)+'-01'&&previous?.start===priorMonth+'-01'&&current.end?.startsWith(today.slice(0,7))&&previous.end?.startsWith(priorMonth)&&current.end.slice(8)===previous.end.slice(8)&&Number.isFinite(current[key])&&Number.isFinite(previous[key])&&value===current[key])delta=ledgerDelta(value,previous[key]);
+ return '<span class="ledger-number '+(key==='net_followers'&&value<0?'negative':key==='net_followers'&&value>0?'positive':'')+'">'+(Number.isFinite(value)?value.toLocaleString('zh-CN'):'—')+'</span>'+delta;
+}
+function ledgerDelta(current,previous,cost=false){
+ if(!Number.isFinite(current)||!Number.isFinite(previous))return '<span class="period-delta unavailable" title="缺少上月同期可比数据">暂无对比</span>';
+ const difference=current-previous,rate=previous===0?null:difference/Math.abs(previous)*100;
+ const direction=difference>0?'↑':difference<0?'↓':'→',tone=difference===0?'flat':(cost?difference<0:difference>0)?'up':'down';
+ return '<span class="period-delta '+tone+'" title="较上月同期'+(cost?'；费用降低标绿':'')+'">'+direction+' '+(rate===null?(difference===0?'0.0%':'新增'):Math.abs(rate).toFixed(1)+'%')+'</span>';
+}
+function ledgerAdMetric(a){
+ const report=accountAdReport(a),comparable=comparableAdPeriods(report);
+ return '<span class="ledger-spend">'+accountAdFee(a)+'</span>'+ledgerDelta(comparable?.[0]?.metrics?.fee,comparable?.[1]?.metrics?.fee,true);
+}
 function accountSalesCells(a){
  const key=manualPlatformKey(a),data=accountSalesData(a);
- return ['month','year'].map(period=>'<td class="account-sales-cell" data-account-sales="'+displayText(key)+'" data-sales-period="'+period+'"><strong>'+salesMoney(data?.[period])+'</strong><small>'+(data?(Number.isFinite(data[period]?.conversion)?data[period].conversion.toFixed(1)+'%':'—')+' 转化':'待归属')+'</small></td>').join('');
+ return ['month','year'].map(period=>'<td class="account-sales-cell" data-account-sales="'+displayText(key)+'" data-sales-period="'+period+'">'+(data?'<span class="ledger-money">'+salesMoney(data[period])+'</span><span class="ledger-rate">'+(Number.isFinite(data[period]?.conversion)?data[period].conversion.toFixed(1)+'%':'—')+'</span>':'<span class="ledger-pending" title="CRM 客户来源尚未关联到此账号，暂不计算成交和转化率">待归属</span>')+'</td>').join('');
 }
 function accountSalesPanel(a){
  if(!a)return '';
