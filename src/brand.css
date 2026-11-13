@@ -123,3 +123,13 @@
 #growth-agent .home-dashboard .platform>h3{overflow-wrap:anywhere}
 #growth-agent main:has(.home-dashboard)>#ga-message{display:none}
 #growth-agent:has(.home-dashboard) header>.muted{display:none}
+#growth-agent .platform-sales{border-top:1px solid #e5ecf3;padding-top:10px;margin-top:10px;color:#52647c}
+#growth-agent .platform-sales-heading{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:12px;font-weight:600}
+#growth-agent .platform-sales-heading small{font-size:10px;font-weight:400;color:#8795a7}
+#growth-agent .platform-sales-table{display:grid;grid-template-columns:36px minmax(0,1fr) 64px;align-items:center;gap:6px 8px;background:#f5f8fc;border-radius:8px;padding:9px 10px;font-variant-numeric:tabular-nums}
+#growth-agent .platform-sales-table small{font-size:10px;color:#7c8c9e}
+#growth-agent .platform-sales-table strong{font-size:14px;font-weight:650;color:#244e7a;overflow-wrap:anywhere;line-height:1.5}
+#growth-agent .platform-sales-table>:nth-child(3n){text-align:right}
+#growth-agent .platform-sales details{font-size:10px;color:#8b98a8;margin-top:6px}
+#growth-agent .platform-sales summary{cursor:pointer}
+#growth-agent .platform-sales details p{font-size:11px;line-height:1.6;margin:5px 0}

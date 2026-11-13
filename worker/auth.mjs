@@ -15,6 +15,7 @@ if(path.startsWith('/api/oceanengine/'))return await oeApi(req,env,user);
 if(path.startsWith('/api/douyin/'))return await dyApi(req,env,user);
 if(path==='/api/acquisition'||path.startsWith('/api/acquisition/'))return await acquisitionApi(req,env,user);
 if(path==='/api/allocation')return await allocationApi(req,env,user);
+if(path==='/api/crm/platform-performance')return await crmPlatformPerformanceApi(req,env,user);
 if(path==='/api/crm/summary')return await crmSummaryApi(req,env,user);
 if(path==='/api/crm/customers')return await crmCustomersApi(req,env,user);
 if(path.startsWith('/api/files'))return await fileApi(req,env,user);
