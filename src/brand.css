@@ -189,3 +189,25 @@
 #growth-agent #ga-body .home-channel-card .summary-cell{padding:4px 0;min-height:0}
 #growth-agent .home-dashboard .home-channel-card{grid-template-rows:auto auto minmax(154px,auto) auto auto}
 @media(max-width:640px){#growth-agent .home-dashboard .home-channel-card{grid-template-rows:auto auto auto auto auto}}
+/* A denser header and semantic metric colors, with neutral missing values. */
+#growth-agent .home-dashboard .home-channel-card{position:relative;grid-template-rows:auto minmax(136px,auto) auto auto;gap:7px;padding:12px!important}
+#growth-agent .home-channel-card .channel-heading{padding-right:90px;min-height:34px}
+#growth-agent .home-channel-card .channel-mark{width:30px;height:30px;border-radius:8px;font-size:11px}
+#growth-agent .home-dashboard .home-channel-card .channel-heading h3{font-size:14px!important}
+#growth-agent .home-channel-card .home-report-state{position:absolute;right:12px;top:13px;display:flex;flex-direction:column;align-items:flex-end;gap:2px;padding:0;border:0;font-size:9px}
+#growth-agent #ga-body .home-channel-card .summary-cell{padding:3px 0;min-height:0;line-height:1.35}
+#growth-agent .home-dashboard .home-channel-card .summary-cell strong{font-size:16px;color:#3269a8}
+#growth-agent .home-channel-card .summary-cell>small:first-child:before{content:"";display:inline-block;width:4px;height:4px;border-radius:50%;margin-right:6px;background:#3269a8;vertical-align:2px}
+#growth-agent .home-dashboard .home-channel-card .summary-cell:is([data-metric="inquiries"],[data-metric="leads"],[data-metric="submissions"]) strong{color:#7953ad}
+#growth-agent .home-channel-card .summary-cell:is([data-metric="inquiries"],[data-metric="leads"],[data-metric="submissions"])>small:first-child:before{background:#7953ad}
+#growth-agent .home-dashboard .home-channel-card .summary-cell:is([data-metric="conversations"],[data-metric="replies"],[data-metric="whatsapp_clicks"]) strong{color:#247d70}
+#growth-agent .home-channel-card .summary-cell:is([data-metric="conversations"],[data-metric="replies"],[data-metric="whatsapp_clicks"])>small:first-child:before{background:#247d70}
+#growth-agent .home-dashboard .home-channel-card .summary-cell[data-value-state="missing"] strong{color:#a4afbd}
+#growth-agent .home-channel-card .summary-cell[data-value-state="missing"]>small:first-child:before{background:#b8c1cc}
+#growth-agent .home-channel-card .platform-sales{padding-top:7px}
+#growth-agent .home-channel-card .platform-sales-table{padding:6px 9px;gap:3px 8px;background:#f7f9fc}
+#growth-agent .platform-sales .sales-amount.has-sales{color:#247d70}
+#growth-agent .platform-sales .sales-conversion.has-conversion{color:#7953ad}
+#growth-agent .home-dashboard .home-channel-card>.row{padding-top:7px}
+#growth-agent .home-dashboard .home-channel-card .row button{min-height:30px;font-size:10px}
+@media(max-width:640px){#growth-agent .home-dashboard .home-channel-card{grid-template-rows:auto auto auto auto;padding:12px!important}#growth-agent .home-channel-card .channel-heading{padding-right:85px}}

@@ -521,7 +521,7 @@ function platformSalesPanel(platform){
  const data=platformPerformance?.platforms?.[platform];
  return '<section class="platform-sales" data-platform-sales="'+displayText(platform)+'"><div class="platform-sales-heading"><span>平台成交</span><small>'+displayText(platform)+' · 全平台</small></div><div class="platform-sales-table"><span></span><small>成交额</small><small>转化率</small>'+[['month','本月'],['year','年度']].map(([key,label])=>{
   const period=data?.[key];
-  return '<small>'+label+'</small><strong>'+salesMoney(period)+'</strong><strong>'+(Number.isFinite(period?.conversion)?period.conversion.toFixed(1)+'%':'—')+'</strong>';
+  return '<small>'+label+'</small><strong class="sales-amount '+(period?.orders&&!period.unpriced?'has-sales':'')+'">'+salesMoney(period)+'</strong><strong class="sales-conversion '+(period?.conversion>0?'has-conversion':'')+'">'+(Number.isFinite(period?.conversion)?period.conversion.toFixed(1)+'%':'—')+'</strong>';
  }).join('')+'</div><details><summary>统计说明</summary><p>成交额按 CRM 成交日期与合同原币汇总。转化率为当期新增客户中，截至统计日已成交的客户占比，按客户去重。来源明确的客户计入对应平台。'+(data?'统计截至 '+data.month.end:'等待 CRM 数据')+'。</p></details></section>';
 }
 async function refreshPlatformPerformance(){
@@ -554,7 +554,7 @@ function specialistPlatformCard(a,index,compact=false){
  const design=specialistPlatformDesign[a[0]],key=manualPlatformKey(a);
  const metrics=design.keys.map(name=>{
   const metric=manualMetric(a,name);
-  return '<div class="summary-cell"><small>本月'+manualMetricLabels[name]+'</small><strong>'+(metric?metric.value.toLocaleString('zh-CN'):compact?'—':'待补充')+'</strong><small>'+(metric?metric.start+' 至 '+metric.end+' · '+metric.days+' 天':'当前报表未提供')+'</small></div>';
+  return '<div class="summary-cell" data-metric="'+name+'" data-value-state="'+(metric?'known':'missing')+'"><small>本月'+manualMetricLabels[name]+'</small><strong>'+(metric?metric.value.toLocaleString('zh-CN'):compact?'—':'待补充')+'</strong><small>'+(metric?metric.start+' 至 '+metric.end+' · '+metric.days+' 天':'当前报表未提供')+'</small></div>';
  }).join('');
  const heading=compact?'<div class="channel-heading" title="'+design.title+'"><span class="channel-mark" aria-hidden="true">'+({阿里巴巴:'A',独立站:'W',WhatsApp:'WA'}[a[0]])+'</span><div><h3>'+displayText(a[0])+'</h3><small>'+design.tag+'</small></div></div>':'<small>'+design.tag+'</small><h3>'+displayText(a[0])+' · '+design.title+'</h3>';
  return '<article class="platform specialist-platform'+(compact?' home-channel-card':'')+'" data-specialist-platform="'+key+'">'+heading+foreignReportStatus(a,compact)+'<div class="summary-grid">'+metrics+'</div>'+platformSalesPanel(a[0])+(compact?'':'<p class="muted">'+design.note+'</p>')+'<div class="row"><button data-account="'+index+'">查看'+displayText(a[0])+'详情 →</button><a href="/ops-sync?embedded=1#'+key+'">上传 / 补齐报表</a></div></article>';
