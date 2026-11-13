@@ -110,5 +110,5 @@ test('homepage specialist section uses imported platform fields and keeps all en
  assert.match(html,/<strong>7<\/strong>/);
  for(const key of ['alibaba-channel','website-channel','whatsapp-channel'])assert.match(html,new RegExp('/ops-sync\\?embedded=1#'+key));
  assert.doesNotMatch(html,/总粉丝|本月发布/);
- assert.match(source,/\+specialistHomepage\(\)/);
+ assert.match(source,/specialistHomepage\(\)\+ledger/);
 });
