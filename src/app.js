@@ -488,7 +488,7 @@ function foreignReportStatus(a,compact=false){
 function foreignMetricCards(a,limit,compact=false){
  return foreignMetricKeys(a).slice(0,limit).map(key=>{
   const metric=manualMetric(a,key);
-  return '<div class="summary-cell"><small>'+(key==='fans'?'最新':'本月')+manualMetricLabels[key]+'</small><strong>'+(metric?metric.value.toLocaleString('zh-CN'):compact?'—':'待补充')+'</strong><small>'+(metric?metric.start+' 至 '+metric.end+' · '+metric.days+' 天':'当前未提供此指标')+'</small></div>';
+  return '<div class="summary-cell"><small>'+(key==='fans'?'最新':'本月')+manualMetricLabels[key]+'</small><strong>'+(metric?metric.value.toLocaleString('zh-CN'):compact?'—':'待补充')+'</strong><small>'+(metric?metric.start+' 至 '+metric.end+' · '+metric.days+' 天':'当前未提供此指标')+'</small>'+manualMetricChange(a,key)+'</div>';
  }).join('');
 }
 const specialistPlatformDesign={
@@ -552,11 +552,11 @@ async function refreshPlatformPerformance(){
 }
 function specialistPlatformCard(a,index,compact=false){
  const design=specialistPlatformDesign[a[0]],key=manualPlatformKey(a);
- const metrics=design.keys.map(name=>{
+ const metrics=design.keys.filter(name=>name!=='leads').map(name=>{
   const metric=manualMetric(a,name);
-  return '<div class="summary-cell" data-metric="'+name+'" data-value-state="'+(metric?'known':'missing')+'"><small>本月'+manualMetricLabels[name]+'</small><strong>'+(metric?metric.value.toLocaleString('zh-CN'):compact?'—':'待补充')+'</strong><small>'+(metric?metric.start+' 至 '+metric.end+' · '+metric.days+' 天':'当前报表未提供')+'</small></div>';
+  return '<div class="summary-cell" data-metric="'+name+'" data-value-state="'+(metric?'known':'missing')+'"><small>本月'+manualMetricLabels[name]+'</small><strong>'+(metric?metric.value.toLocaleString('zh-CN'):compact?'—':'待补充')+'</strong><small>'+(metric?metric.start+' 至 '+metric.end+' · '+metric.days+' 天':'当前报表未提供')+'</small>'+manualMetricChange(a,name)+'</div>';
  }).join('');
- const heading=compact?'<div class="channel-heading" title="'+design.title+'"><span class="channel-mark" aria-hidden="true">'+({阿里巴巴:'A',独立站:'W',WhatsApp:'WA'}[a[0]])+'</span><div><h3>'+displayText(a[0])+'</h3><small>'+design.tag+'</small></div></div>':'<small>'+design.tag+'</small><h3>'+displayText(a[0])+' · '+design.title+'</h3>';
+ const heading=compact?'<div class="channel-heading" title="'+design.title+'"><span class="channel-mark" aria-hidden="true">'+({阿里巴巴:'A',独立站:'W',WhatsApp:'WA'}[a[0]])+'</span><div><h3>'+displayText(a[0])+'</h3><small>'+design.tag+' · 较上月同期</small></div></div>':'<small>'+design.tag+'</small><h3>'+displayText(a[0])+' · '+design.title+'</h3>';
  return '<article class="platform specialist-platform'+(compact?' home-channel-card':'')+'" data-specialist-platform="'+key+'">'+heading+foreignReportStatus(a,compact)+'<div class="summary-grid">'+metrics+'</div>'+platformSalesPanel(a[0])+(compact?'':'<p class="muted">'+design.note+'</p>')+'<div class="row"><button data-account="'+index+'">查看'+displayText(a[0])+'详情 →</button><a href="/ops-sync?embedded=1#'+key+'">上传 / 补齐报表</a></div></article>';
 }
 function specialistHomepage(){
@@ -576,6 +576,26 @@ function manualPlatformKey([platform,account]){
 }
 function reportToday(){
  return new Date(Date.now()+28800000).toISOString().slice(0,10);
+}
+function manualMetricChange(a,key){
+ const metric=manualMetric(a,key),today=reportToday();
+ const missing='<span class="period-delta unavailable" title="缺少相同日期范围的完整报表">暂无对比</span>';
+ if(!metric||!metric.end.startsWith(today.slice(0,7)))return missing;
+ const [year,month]=metric.end.split('-').map(Number),endDay=Number(metric.end.slice(8));
+ const previousMonth=new Date(Date.UTC(year,month-2,1)).toISOString().slice(0,7);
+ if(endDay>new Date(Date.UTC(year,month-1,0)).getUTCDate())return missing;
+ const rows=manualPlatformReports[manualPlatformKey(a)]||[];
+ const lookup=new Map(rows.map(row=>[row.date,row.daily||{}]));
+ let current=0,previous=0;
+ for(let day=key==='fans'?endDay:1;day<=endDay;day++){
+  const suffix='-'+String(day).padStart(2,'0'),x=lookup.get(today.slice(0,7)+suffix)?.[key],y=lookup.get(previousMonth+suffix)?.[key];
+  if(!Number.isFinite(x)||!Number.isFinite(y))return missing;
+  current+=x;previous+=y;
+ }
+ const title='较上月同期：'+previousMonth+'-01 至 '+previousMonth+'-'+String(endDay).padStart(2,'0');
+ if(previous===0&&current!==0)return '<span class="period-delta" title="上月同期为0，无法计算百分比">↑ 新增</span>';
+ const rate=previous===0?0:(current-previous)/Math.abs(previous)*100;
+ return '<span class="period-delta '+(rate>0?'up':rate<0?'down':'flat')+'" title="'+title+'">'+(rate>0?'↑':rate<0?'↓':'→')+' '+Math.abs(rate).toFixed(1)+'%</span>';
 }
 function manualMetric(a,key){
  const rows=manualPlatformReports[manualPlatformKey(a)]||[],today=reportToday();

@@ -337,3 +337,13 @@ body:has(#batch-form) :is(.file-hint,.template-hint){font-size:10px;line-height:
  #growth-agent .supplement-table.column-report td:first-child{font-size:11px;font-weight:400;margin:0}
  #growth-agent .supplement-table.column-report td:before{display:none!important}
 }
+#growth-agent .period-delta{display:block;font-size:10px;line-height:1.5;font-weight:500;white-space:nowrap;color:#7b899a;margin-top:4px}
+#growth-agent .period-delta.up{color:#247d70}
+#growth-agent .period-delta.down{color:#b15c5a}
+#growth-agent .period-delta.unavailable{color:#a1adbc;font-size:9px}
+#growth-agent .home-dashboard .home-channel-card .summary-cell{display:grid;grid-template-columns:minmax(0,1fr) auto 62px;gap:8px}
+#growth-agent .home-channel-card .summary-cell .period-delta{margin:0;text-align:right;font-size:10px}
+#growth-agent .home-channel-card .summary-cell .period-delta.unavailable{font-size:9px}
+#growth-agent .home-dashboard .home-channel-card .summary-cell strong{text-align:right}
+#growth-agent .home-dashboard .home-channel-card{grid-template-rows:auto minmax(110px,auto) auto auto}
+@media(max-width:640px){#growth-agent .home-dashboard .home-channel-card{grid-template-rows:auto auto auto auto}}

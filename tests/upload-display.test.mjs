@@ -122,3 +122,17 @@ test('account sales require a verified account reference and never reuse platfor
  assert.doesNotMatch(c.accountSalesCells(['Facebook','玩具号']),/USD 125/);
  assert.match(c.accountSalesCells(['Instagram','工厂号']),/待归属/);
 });
+
+test('month comparison requires matched complete dates and handles zero baselines honestly',()=>{
+ const c=frontend(),month=c.reportToday().slice(0,7),[y,m]=month.split('-').map(Number),prior=new Date(Date.UTC(y,m-2,1)).toISOString().slice(0,7),a=['阿里巴巴','渠道汇总'];
+ const row=(date,value)=>({date,daily:{clicks:value},ad:{}});
+ c.manualPlatformReports['alibaba-channel']=[row(month+'-01',20),row(month+'-02',40),row(prior+'-01',10),row(prior+'-02',20)];
+ assert.match(c.manualMetricChange(a,'clicks'),/↑ 100.0%/);
+ c.manualPlatformReports['alibaba-channel'].pop();
+ assert.match(c.manualMetricChange(a,'clicks'),/暂无对比/);
+ c.manualPlatformReports['alibaba-channel']=[row(month+'-01',20),row(prior+'-01',0)];
+ assert.match(c.manualMetricChange(a,'clicks'),/↑ 新增/);
+ assert.doesNotMatch(c.manualMetricChange(a,'clicks'),/Infinity/);
+ c.manualPlatformReports['alibaba-channel']=[row(month+'-01',0),row(prior+'-01',0)];
+ assert.match(c.manualMetricChange(a,'clicks'),/→ 0.0%/);
+});
