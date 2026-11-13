@@ -112,3 +112,13 @@ test('homepage specialist section uses imported platform fields and keeps all en
  assert.doesNotMatch(html,/总粉丝|本月发布/);
  assert.match(source,/specialistHomepage\(\)\+ledger/);
 });
+
+test('account sales require a verified account reference and never reuse platform totals',()=>{
+ const c=frontend();
+ vm.runInContext(`platformPerformance={platforms:{Facebook:{month:{orders:9}}},accounts:[{platform:'Facebook',account_ref:'facebook-factory',month:{orders:1,amounts:[{currency:'USD',amount_minor:12500}],conversion:25},year:{orders:1,amounts:[{currency:'USD',amount_minor:12500}],conversion:10}}]}`,c);
+ assert.match(c.accountSalesCells(['Facebook','工厂号']),/USD 125/);
+ assert.match(c.accountSalesCells(['Facebook','工厂号']),/25.0%/);
+ assert.match(c.accountSalesCells(['Facebook','玩具号']),/待归属/);
+ assert.doesNotMatch(c.accountSalesCells(['Facebook','玩具号']),/USD 125/);
+ assert.match(c.accountSalesCells(['Instagram','工厂号']),/待归属/);
+});

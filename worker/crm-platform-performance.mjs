@@ -1,6 +1,6 @@
 const crmPerformancePlatforms=['抖音','小红书','视频号','Instagram','Facebook','YouTube','TikTok','阿里巴巴','独立站','WhatsApp'];
 const crmPerformanceLeads=`WITH attributed AS (
- SELECT l.id,COALESCE(${crmSalesReportDay('l.entered')},${crmSalesReportDay('l.created')}) AS acquired_day,
+ SELECT l.id,c.account_id,COALESCE(${crmSalesReportDay('l.entered')},${crmSalesReportDay('l.created')}) AS acquired_day,
  CASE WHEN c.platform IN ('抖音','小红书','视频号','Instagram','Facebook','YouTube','TikTok','阿里巴巴','独立站','WhatsApp') THEN c.platform
  WHEN trim(l.source) IN ('抖音','小红书','视频号','Instagram','Facebook','YouTube','TikTok','独立站','WhatsApp') THEN trim(l.source)
  WHEN trim(l.source) IN ('阿里','阿里巴巴') THEN '阿里巴巴'
@@ -19,31 +19,34 @@ async function crmPlatformPerformanceApi(req,env,user){
  const statements=[];
  for(const start of Object.values(periods)){
   statements.push(env.CRM_DB.prepare(`${crmPerformanceLeads}
-   SELECT l.platform,COUNT(*) AS customers,
+   SELECT l.platform,l.account_id,COUNT(*) AS customers,
     SUM(CASE WHEN EXISTS(SELECT 1 FROM crm_deals d WHERE d.lead_id=l.id AND d.cancelled=0 AND d.deal_date BETWEEN l.acquired_day AND ?) THEN 1 ELSE 0 END) AS converted
-   FROM attributed l WHERE l.acquired_day BETWEEN ? AND ? AND l.platform IS NOT NULL GROUP BY l.platform`).bind(today,start,today));
+   FROM attributed l WHERE l.acquired_day BETWEEN ? AND ? AND l.platform IS NOT NULL GROUP BY l.platform,l.account_id`).bind(today,start,today));
   statements.push(env.CRM_DB.prepare(`${crmPerformanceLeads}
-   SELECT l.platform,w.currency,COUNT(*) AS orders,COUNT(w.total_minor) AS priced,SUM(w.total_minor) AS amount_minor
+   SELECT l.platform,l.account_id,w.currency,COUNT(*) AS orders,COUNT(w.total_minor) AS priced,SUM(w.total_minor) AS amount_minor
    FROM crm_deals d JOIN attributed l ON l.id=d.lead_id
    LEFT JOIN crm_workflow_contracts w ON w.deal_id=d.id
-   WHERE d.cancelled=0 AND d.deal_date BETWEEN ? AND ? AND l.platform IS NOT NULL GROUP BY l.platform,w.currency`).bind(start,today));
+   WHERE d.cancelled=0 AND d.deal_date BETWEEN ? AND ? AND l.platform IS NOT NULL GROUP BY l.platform,l.account_id,w.currency`).bind(start,today));
  }
- const results=await env.CRM_DB.batch(statements),platforms={};
- for(const platform of crmPerformancePlatforms){
-  const domestic=['抖音','小红书','视频号'].includes(platform);
-  if(!opsSyncAllowed(user,false,domestic?2:1))continue;
-  platforms[platform]={};
+ statements.push(env.CRM_DB.prepare('SELECT id,platform,account_ref FROM crm_operation_accounts WHERE active=1').bind());
+ const results=await env.CRM_DB.batch(statements),platforms={},accounts=[];
+ const allowed=platform=>opsSyncAllowed(user,false,['抖音','小红书','视频号'].includes(platform)?2:1);
+ function periodsFor(platform,accountId){
+  const data={};
   for(const [index,period] of Object.keys(periods).entries()){
-   const cohort=results[index*2].results.find(row=>row.platform===platform);
-   const amounts=results[index*2+1].results.filter(row=>row.platform===platform);
-   platforms[platform][period]={
-    start:periods[period],end:today,customers:cohort?.customers||0,converted:cohort?.converted||0,
-    conversion:cohort?.customers?cohort.converted/cohort.customers*100:null,
-    amounts:amounts.filter(row=>row.currency&&row.priced).map(row=>({currency:row.currency,amount_minor:row.amount_minor})),
+   const matches=row=>row.platform===platform&&(accountId===undefined||row.account_id===accountId);
+   const cohort=results[index*2].results.filter(matches);
+   const customers=cohort.reduce((n,row)=>n+row.customers,0),converted=cohort.reduce((n,row)=>n+row.converted,0);
+   const amounts=results[index*2+1].results.filter(matches),currencies=new Map();
+   for(const row of amounts)if(row.currency&&row.priced)currencies.set(row.currency,(currencies.get(row.currency)||0)+row.amount_minor);
+   data[period]={start:periods[period],end:today,customers,converted,conversion:customers?converted/customers*100:null,
+    amounts:[...currencies].map(([currency,amount_minor])=>({currency,amount_minor})),
     orders:amounts.reduce((n,row)=>n+row.orders,0),
-    unpriced:amounts.reduce((n,row)=>n+(!row.currency?row.orders:row.orders-row.priced),0)
-   };
+    unpriced:amounts.reduce((n,row)=>n+(!row.currency?row.orders:row.orders-row.priced),0)};
   }
+  return data;
  }
- return json({updated_at:Date.now(),platforms});
+ for(const platform of crmPerformancePlatforms)if(allowed(platform))platforms[platform]=periodsFor(platform);
+ for(const account of results[4].results)if(crmPerformancePlatforms.includes(account.platform)&&allowed(account.platform))accounts.push({...account,...periodsFor(account.platform,account.id)});
+ return json({updated_at:Date.now(),platforms,accounts});
 }
