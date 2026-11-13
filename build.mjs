@@ -2,7 +2,7 @@ import fs from 'node:fs';
 fs.rmSync('dist',{recursive:true,force:true});fs.mkdirSync('dist/public',{recursive:true});
 for(const name of ['ops-control.js','ops-sync.html','ops-sync.js','editing.js','acquisition.js','allocation.js','crm.js','accounts.js','brand-ui.js','brand.css','files.html'])fs.copyFileSync('src/'+name,'dist/public/'+name);
 const html=fs.readFileSync('src/index.html','utf8').replace('<script src="app.js"></script>','<script src="/editing.js"></script><script src="/acquisition.js"></script><script src="/allocation.js"></script><script src="/crm.js"></script><script src="/accounts.js"></script><script src="/brand-ui.js"></script>');fs.writeFileSync('dist/public/index.html',html);
-const source=['worker/auth.mjs','worker/xhs-callback.mjs','worker/xhs-bindings.mjs','worker/files.mjs','worker/douyin.mjs','worker/oceanengine.mjs','worker/oceanengine-reports.mjs','worker/oceanengine-discovery.mjs','worker/ops-sync.mjs','worker/ops-manual-reports.mjs','worker/ops-reports.mjs','worker/ops-report-parser.mjs','worker/ops-report-import.mjs','worker/ops-content.mjs','worker/crm.mjs','worker/crm-sales-summary.mjs','worker/crm-sync.mjs','worker/crm-platform-performance.mjs','worker/acquisition.mjs','worker/allocation.mjs','worker/scheduled.mjs','worker/creator-config.mjs','worker/creator.mjs','worker/creator-cloud.mjs','worker/creator-collect.mjs','worker/creator-notes.mjs'].map(p=>fs.readFileSync(p,'utf8').replaceAll('export async function ','async function ').replaceAll('export function ','function ')).join('\n');
+const source=['worker/auth.mjs','worker/xhs-callback.mjs','worker/xhs-bindings.mjs','worker/files.mjs','worker/douyin.mjs','worker/oceanengine.mjs','worker/oceanengine-reports.mjs','worker/oceanengine-discovery.mjs','worker/ops-sync.mjs','worker/ops-manual-reports.mjs','worker/ops-reports.mjs','worker/ops-report-parser.mjs','worker/ops-report-import.mjs','worker/ops-content.mjs','worker/crm.mjs','worker/crm-sales-summary.mjs','worker/crm-sync.mjs','worker/crm-platform-performance.mjs','worker/acquisition.mjs','worker/allocation.mjs','worker/scheduled.mjs','worker/scheduled-once.mjs','worker/creator-config.mjs','worker/creator.mjs','worker/creator-cloud.mjs','worker/creator-collect.mjs','worker/creator-notes.mjs'].map(p=>fs.readFileSync(p,'utf8').replaceAll('export async function ','async function ').replaceAll('export function ','function ')).join('\n');
 const app=fs.readFileSync('src/app.js','utf8');
 const opsSyncHtml=fs.readFileSync('src/ops-sync.html','utf8');
 const reporting=fs.readFileSync('worker/group-reporting.mjs','utf8');
@@ -12,10 +12,10 @@ export default {
  async scheduled(event,env,ctx){
   // Cloudflare uses UTC. These are 10:30, 13:00 and 22:00 in Shanghai.
   if(!['30 2 * * *','0 5 * * *','0 14 * * *'].includes(event.cron))return;
-  ctx.waitUntil(crmScheduledSync(env));
-  ctx.waitUntil(scheduledCreatorsSync(env));
-  ctx.waitUntil(scheduledSync(env));
-  ctx.waitUntil(oeScheduledSync(env));
+  ctx.waitUntil(runScheduledSourceOnce(env,'crm',()=>crmScheduledSync(env)));
+  ctx.waitUntil(scheduledCreatorsOnce(env));
+  ctx.waitUntil(runScheduledSourceOnce(env,'xiaohongshu',()=>scheduledSync(env)));
+  ctx.waitUntil(runScheduledSourceOnce(env,'douyin_oceanengine_garden',()=>oeScheduledSync(env)));
  },
  async fetch(req,env){try{const url=new URL(req.url),p=url.pathname;
 if(p==='/ops-sync'&&url.searchParams.get('embedded')!=='1')return new Response(null,{status:302,headers:{Location:'/#ops-sync'}});
