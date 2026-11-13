@@ -211,3 +211,98 @@
 #growth-agent .home-dashboard .home-channel-card>.row{padding-top:7px}
 #growth-agent .home-dashboard .home-channel-card .row button{min-height:30px;font-size:10px}
 @media(max-width:640px){#growth-agent .home-dashboard .home-channel-card{grid-template-rows:auto auto auto auto;padding:12px!important}#growth-agent .home-channel-card .channel-heading{padding-right:85px}}
+/* Consistent, compact supplementary report details for every platform. */
+#growth-agent #ga-body .supplement-panel{padding:16px 18px}
+#growth-agent .supplement-panel>.row{gap:12px;margin-bottom:6px}
+#growth-agent .supplement-panel h3{margin:0;font-size:15px}
+#growth-agent .supplement-panel .report-upload-link{padding:5px 9px;border:1px solid #dce6f2;background:#f5f8fd;border-radius:7px;color:#416999;font-size:11px;text-decoration:none;white-space:nowrap}
+#growth-agent .supplement-meta{display:flex;align-items:center;gap:12px;margin:0 0 10px;font-size:10px;color:#8996a6}
+#growth-agent .supplement-meta details{position:relative}
+#growth-agent .supplement-meta summary{cursor:pointer}
+#growth-agent .supplement-meta details p{margin:6px 0;max-width:420px;color:#708097;font-size:11px}
+#growth-agent .supplement-table{table-layout:fixed;width:100%;font-size:12px;border-collapse:collapse}
+#growth-agent .supplement-table th:first-child{width:108px}
+#growth-agent .supplement-table th:nth-child(2){width:48%}
+#growth-agent .supplement-table th{font-weight:500;font-size:11px;padding:9px 10px;background:#f5f8fc;color:#8090a5;text-align:left}
+#growth-agent .supplement-table td{padding:9px 10px;vertical-align:top;border-bottom:1px solid #edf1f6}
+#growth-agent .supplement-table td:first-child{white-space:nowrap;color:#617792;font-size:11px;font-variant-numeric:tabular-nums;padding-top:14px}
+#growth-agent .supplement-table tbody tr:nth-child(even){background:#fbfcfe}
+#growth-agent .report-metrics{display:flex;flex-wrap:wrap;gap:5px 6px}
+#growth-agent .report-metric{display:inline-flex;align-items:baseline;gap:6px;padding:4px 7px;border:1px solid #eaf0f6;border-radius:6px;background:#f4f8fd;white-space:nowrap;line-height:1.35;font-size:10px;color:#7e8ca0}
+#growth-agent .report-metric b{font-size:12px;font-weight:600;color:#3269a8;font-variant-numeric:tabular-nums}
+#growth-agent .report-conversion{background:#f7f3fc;border-color:#eee7f8}
+#growth-agent .report-conversion b{color:#7953ad}
+#growth-agent .report-engagement{background:#f0f8f5;border-color:#e2f0ea}
+#growth-agent .report-engagement b{color:#247d70}
+#growth-agent .report-spend{background:#fff8ec;border-color:#f5ead5}
+#growth-agent .report-spend b{color:#a47422}
+#growth-agent .report-content{background:#f5f6f9;border-color:#eaedf3}
+#growth-agent .report-content b{color:#63738a}
+#growth-agent .report-missing{color:#acb6c3;font-size:12px;padding:4px 0}
+@media(max-width:640px){
+ #growth-agent #ga-body .supplement-panel{padding:12px}
+ #growth-agent .supplement-panel>.row{align-items:center;flex-wrap:wrap}
+ #growth-agent .supplement-panel .supplement-scroll{overflow:visible}
+ #growth-agent .supplement-table,#growth-agent .supplement-table tbody{display:block;width:100%;min-width:0}
+ #growth-agent .supplement-table thead{display:none}
+ #growth-agent .supplement-table tr{display:block;padding:10px 0;border-bottom:1px solid #e8eef5}
+ #growth-agent .supplement-table td{display:block;width:auto;padding:4px 0!important;border:0;text-align:left}
+ #growth-agent .supplement-table td:first-child{font-size:12px;font-weight:600;margin-bottom:6px}
+ #growth-agent .supplement-table td:first-child:before{display:none}
+ #growth-agent .supplement-table td:not(:first-child):before{content:attr(data-label);display:block;font-size:10px;color:#8c99ab;margin-bottom:4px}
+}
+/* Shared density and visual hierarchy across account, analysis and business workspaces. */
+#growth-agent #ga-body>.panel:not(.home-dashboard),#growth-agent #ga-body .xhs-view>.panel{padding:14px 16px;margin-bottom:10px;border-radius:10px}
+#growth-agent #ga-body .xhs-view .platform{padding:13px!important;border-radius:10px}
+#growth-agent #ga-body .xhs-view .platforms{gap:10px}
+#growth-agent #ga-body .xhs-view .grid{gap:7px;margin:8px 0;grid-template-columns:repeat(auto-fit,minmax(128px,1fr))}
+#growth-agent #ga-body .xhs-view .grid>.panel{padding:9px 11px;margin:0;border-radius:8px;background:#f6f9fd;border:1px solid #e8eef6}
+#growth-agent #ga-body .xhs-view h2{font-size:20px;line-height:1.35}
+#growth-agent #ga-body .xhs-view h3{font-size:14px;margin:0 0 8px}
+#growth-agent #ga-body .xhs-view p{font-size:12px;line-height:1.6;margin:6px 0}
+#growth-agent #ga-body .xhs-view small{font-size:10px;line-height:1.5}
+#growth-agent #ga-body .xhs-view .value{font-size:21px;line-height:1.35;margin:3px 0;color:#3269a8}
+#growth-agent #ga-body .metric-tile[data-metric-tone="spend"]{background:#fffbf3;border-color:#f1e9d8}
+#growth-agent #ga-body .metric-tile[data-metric-tone="spend"] .value{color:#a47422}
+#growth-agent #ga-body .metric-tile[data-metric-tone="sales"]{background:#f2f9f6;border-color:#e1eee8}
+#growth-agent #ga-body .metric-tile[data-metric-tone="sales"] .value{color:#247d70}
+#growth-agent #ga-body .metric-tile[data-metric-tone="conversion"]{background:#f8f5fc;border-color:#eee8f6}
+#growth-agent #ga-body .metric-tile[data-metric-tone="conversion"] .value{color:#7953ad}
+#growth-agent #ga-body .metric-tile .value.negative{color:#b15a59}
+#growth-agent #ga-body .metric-change{font-size:10px;line-height:1.5}
+#growth-agent #ga-body .review-number{padding:9px 11px;border-radius:8px}
+#growth-agent #ga-body .review-number strong{font-size:21px;margin:2px 0}
+#growth-agent #ga-body .review-actions{gap:7px}
+#growth-agent #ga-body .review-action{padding:10px;border-radius:8px;font-size:12px}
+#growth-agent #ga-body .review-action .action-top strong{font-size:13px}
+#growth-agent #ga-body .review-action p{margin:5px 0;line-height:1.6}
+#growth-agent #ga-body .xhs-view .xhs-card-stats{gap:12px;margin:9px 0}
+#growth-agent #ga-body .xhs-card-stats strong{font-size:19px;font-variant-numeric:tabular-nums}
+#growth-agent #ga-body .xhs-view table th{font-size:10px;font-weight:500;background:#f4f7fb}
+#growth-agent #ga-body .xhs-view table td{font-size:11px;line-height:1.5}
+#growth-agent #ga-body .ranking-table :is(td,th){padding:8px!important}
+#growth-agent #ga-body .ranking-table td:not(:first-child){font-variant-numeric:tabular-nums}
+#growth-agent #ga-body .work-cover{width:42px;height:56px;border-radius:6px}
+#growth-agent #ga-body .work-identity{gap:8px;min-width:210px;max-width:310px}
+#growth-agent #ga-body .work-identity strong{font-size:12px;line-height:1.45}
+#growth-agent #ga-body .work-identity summary{font-size:10px;margin-top:3px}
+#growth-agent #ga-body .account-heading .xhs-status{font-size:10px}
+#growth-agent #ga-body :is(.editing,.crm-view,.account-detail) .row{gap:8px}
+@media(max-width:640px){
+ #growth-agent #ga-body .xhs-view .grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ #growth-agent #ga-body .xhs-view .grid>.panel{padding:9px}
+ #growth-agent #ga-body .xhs-view .value{font-size:19px}
+ #growth-agent #ga-body .xhs-view>.panel{padding:12px}
+ #growth-agent #ga-body .review-actions{grid-template-columns:1fr}
+}
+/* The upload workspace shares the same density while keeping account boundaries explicit. */
+body:has(#batch-form) main{margin:12px auto;padding:0 16px}
+body:has(#batch-form) .card{padding:12px;border-radius:10px;border-color:#e4eaf2;box-shadow:0 2px 10px #19385904}
+body:has(#batch-form) h2{font-size:16px}
+body:has(#batch-form) .account-head{margin-bottom:8px;gap:8px}
+body:has(#batch-form) dl{font-size:11px;gap:3px 8px;padding-bottom:8px;margin-bottom:9px}
+body:has(#batch-form) :is(select,input[type=file]){font-size:12px;padding:6px 8px}
+body:has(#batch-form) :is(button,.button){font-size:12px;padding:6px 10px}
+body:has(#batch-form) .notice{padding:11px 13px;border-radius:9px}
+body:has(#batch-form) :is(.file-hint,.template-hint){font-size:10px;line-height:1.5}
+@media(min-width:1000px){body:has(#batch-form) .cards{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}}
