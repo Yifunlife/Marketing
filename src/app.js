@@ -630,13 +630,20 @@ function manualSupplement(a,showEmpty=false){
  if(!key||(!rows.length&&!showEmpty))return '';
  const id=a[0]==='抖音'?'douyin-'+key:key;
  const format=value=>Number.isFinite(value)?value.toLocaleString('zh-CN'):'—';
- const pill=(label,value,tone='traffic')=>'<span class="report-metric report-'+tone+'"><span>'+displayText(label)+'</span><b>'+value+'</b></span>';
- const items=metrics=>Object.entries(metrics||{}).filter(([name])=>manualMetricLabels[name]).map(([name,value])=>pill(manualMetricLabels[name],format(value),['leads','inquiries','submissions'].includes(name)?'conversion':['conversations','replies','whatsapp_clicks'].includes(name)?'engagement':name==='posts'?'content':'traffic')).join('');
- const result=rows.length?'<div class="scroll supplement-scroll"><table class="supplement-table"><thead><tr><th>统计日</th><th>经营指标</th><th>广告指标</th></tr></thead><tbody>'+rows.slice(0,14).map(({date,daily={},ad={}})=>{
-  const ctr=ad.impressions>0&&Number.isFinite(ad.clicks)?pill('点击率',(100*ad.clicks/ad.impressions).toFixed(2)+'%','conversion'):'';
-  const spend=Number.isFinite(ad.spend)?pill('广告费',displayText(ad.currency)+' '+(ad.spend/100).toLocaleString('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:2}),'spend'):'';
-  return '<tr><td data-label="统计日"><time>'+displayText(date)+'</time></td><td data-label="经营指标"><div class="report-metrics">'+(items(daily)||'<span class="report-missing">—</span>')+'</div></td><td data-label="广告指标"><div class="report-metrics">'+(spend+items(ad)+ctr||'<span class="report-missing">—</span>')+'</div></td></tr>';
- }).join('')+'</tbody></table></div>':'<p class="muted">等待上传该账号的首份报表。</p>';
+ const visible=rows.slice(0,14);
+ const dailyKeys=Object.keys(manualMetricLabels).filter(name=>visible.some(row=>Number.isFinite(row.daily?.[name])));
+ const adKeys=['spend',...Object.keys(manualMetricLabels)].filter(name=>visible.some(row=>Number.isFinite(row.ad?.[name])));
+ if(visible.some(row=>row.ad?.impressions>0&&Number.isFinite(row.ad?.clicks)))adKeys.push('ctr');
+ const label=name=>name==='spend'?'广告费（原币）':name==='ctr'?'点击率':manualMetricLabels[name];
+ const tone=name=>name==='spend'?'spend':['leads','inquiries','submissions','ctr'].includes(name)?'conversion':['conversations','replies','whatsapp_clicks'].includes(name)?'engagement':name==='posts'?'content':'traffic';
+ const headers=keys=>keys.length?keys.map(name=>'<th scope="col" class="report-column-'+tone(name)+'">'+displayText(label(name))+'</th>').join(''):'<th scope="col">暂无指标</th>';
+ const cells=(keys,metrics={})=>keys.length?keys.map(name=>{
+  let value=metrics[name],text=format(value);
+  if(name==='ctr'){value=metrics.impressions>0&&Number.isFinite(metrics.clicks)?100*metrics.clicks/metrics.impressions:null;text=Number.isFinite(value)?value.toFixed(2)+'%':'—';}
+  if(name==='spend')text=Number.isFinite(value)?displayText(metrics.currency)+' '+(value/100).toLocaleString('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:2}):'—';
+  return '<td data-label="'+displayText(label(name))+'" class="report-number report-column-'+tone(name)+(Number.isFinite(value)?'':' report-number-missing')+'">'+text+'</td>';
+ }).join(''):'<td class="report-number-missing" data-label="指标">—</td>';
+ const result=rows.length?'<div class="scroll supplement-scroll"><table class="supplement-table column-report"><thead><tr><th rowspan="2" scope="col">统计日</th><th colspan="'+Math.max(1,dailyKeys.length)+'" scope="colgroup">经营指标</th><th colspan="'+Math.max(1,adKeys.length)+'" scope="colgroup">广告指标</th></tr><tr>'+headers(dailyKeys)+headers(adKeys)+'</tr></thead><tbody>'+visible.map(({date,daily,ad})=>'<tr><td data-label="统计日"><time>'+displayText(date)+'</time></td>'+cells(dailyKeys,daily)+cells(adKeys,ad)+'</tr>').join('')+'</tbody></table></div>':'<p class="muted">等待上传该账号的首份报表。</p>';
  return uploadedAccountSummary(a)+'<section class="panel xhs-section supplement-panel"><div class="row between"><h3>运营补报</h3><a class="report-upload-link" href="/ops-sync?embedded=1#'+id+'">下载模板 / 上传报表 →</a></div><div class="supplement-meta"><span>最近 '+Math.min(rows.length,14)+' 天明细</span><details><summary>统计说明</summary><p>按自然日展示，广告按原币。补报数据单独列示，平台咨询与留资按报表口径。</p></details></div>'+result+'</section>';
 }
 function verifiedAccount(index){const a=accountRows[index];if(a[0]==='抖音')return douyinAccountDetail(a)+manualSupplement(a);if(a[0]==='视频号'){
